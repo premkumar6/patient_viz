@@ -12,6 +12,8 @@ import collections
 from operator import itemgetter
 import json
 
+from sqlalchemy import Unicode
+
 __doc__ = """
 Created on 2015-04-10
 
@@ -45,7 +47,7 @@ def shift_days(stamp, days):
 
 def is_array(v):
     try:
-        if isinstance(v, unicode):
+        if isinstance(v, Unicode):
             return False
     except NameError:
         pass

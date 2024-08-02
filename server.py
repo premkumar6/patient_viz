@@ -1,219 +1,145 @@
-# -*- coding: utf-8 -*-
-# -*- mode: python; -*-
-"""exec" "`dirname \"$0\"`/call.sh" "$0" "$@";" """
-from __future__ import print_function
-
+from flask import Flask, jsonify, request, send_from_directory, render_template
 import os
-import sys
 import json
-
-from StringIO import StringIO
-
-import build_dictionary
-import cms_analyze
-import cms_get_patient
-import util
+import logging
 from omop import OMOP
 
-sys.path.append('lib')
+app = Flask(__name__, static_folder='static')
 
-from quick_server.quick_server import create_server, msg, json_dumps
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-json_dir = 'json/'
-patients_list = 'patients.txt'
-dictionary_bind = 'dictionary.json'
+settings = {
+        'omop_user': 'etl_viz',
+        'omop_passwd': 'prem123',
+        'omop_host': 'localhost',
+        'omop_port': '5432',
+        'omop_db': 'synthea10',
+        'omop_schema': 'cdm_synthea10',
+        'omop_engine': 'postgresql',
+        'omop_use_alt_hierarchies': True,
+        'use_cache': True,
+        'ccs_diag': 'path/to/ccs_diag/file',
+        'ccs_proc': 'path/to/ccs_proc/file',
+    }
 
-def start_server(max_num, settings_file, format_file, class_file, line_file, cms_path, addr, port, debug):
-    settings = {}
-    util.read_config(settings, settings_file, True)
-    use_cache = settings.get('use_cache', True)
+omop = OMOP(settings, True)
 
-    all_paths = []
-    input_format = {}
-    use_db = False
-    omop = None
-    if settings.get('omop_use_db', False):
-        use_db = True
-        omop = OMOP(settings, True)
-    else:
-        util.convert_paths([ cms_path ], all_paths)
+@app.route('/')
+def index():
+    return render_template('index.html')       
+              
+@app.route('/patients.txt')
+@app.route('/patient-viz/patients.txt')
+def get_patients_list():
+    logger.info("get_list called")
+    try:
+        return send_from_directory('.', 'patients.txt')
+    except Exception as e:
+        logger.error(f"Error reading patients.txt: {e}")
+        return jsonify([])
 
-        util.read_format(format_file, input_format, usage)
-        cms_analyze.input_format = input_format
-        cms_get_patient.input_format = input_format
+# @app.route('/json/<path:filename>')
+# @app.route('/patient-viz/json/<path:filename>')
+# def get_json_file(filename):
+#     try:
+#         if not filename.endswith('.json'):
+#             filename += '.json'
+#         return send_from_directory('json', filename)
+#     except Exception as e:
+#         logger.error(f"Error sending json file {filename}: {e}")
+#         return jsonify({"error": "File not found"}), 404
 
-        build_dictionary.debugOutput = True
-        build_dictionary.init(settings, settings_file)
+@app.route('/json/<path:filename>')
+@app.route('/patient-viz/json/<path:filename>')
+def get_json_file(filename):
+    try:
+        if not filename.endswith('.json'):
+            filename += '.json'
+        
+        file_path = os.path.join('json', filename)
+        
+        if not os.path.exists(file_path):
+            # If the file doesn't exist, generate it
+            person_source_value = filename.replace('.json', '')
+            patient_data = omop.get_patient(person_source_value, {}, None, None)
+            
+            with open(file_path, 'w') as f:
+                json.dump(patient_data, f)
+        
+        return send_from_directory('json', filename)
+    except Exception as e:
+        logger.error(f"Error sending json file {filename}: {e}")
+        return jsonify({"error": "File not found"}), 404
+    
+@app.route('/json/dictionary.json')
+def get_json_dictionary():
+    return get_dictionary()
 
-    dictionary_file = os.path.join(json_dir, dictionary_bind)
+@app.route('/patient-viz/dictionary.json')
+def get_dictionary():
+    try:
+        with open('json/dictionary.json', 'r') as file:
+            dictionary = json.load(file)
+        return jsonify(dictionary)
+    except Exception as e:
+        logger.error(f"Error reading dictionary.json: {e}")
+        return jsonify({})
+    
+@app.route('/patient-viz/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 
-    patients = set()
-    def save_patients():
-        if not use_cache:
-            return
-        with open(patients_list, 'w') as pf:
-            pf.write('\n'.join(sorted(list(patients))))
-            pf.flush()
+@app.route('/static/<path:filename>')
+def custom_static(filename):
+    return send_from_directory(app.static_folder, filename)
 
-    if not os.path.isfile(patients_list) or not use_cache:
-        if use_db:
-            omop.list_patients(patients, prefix=json_dir, limit=max_num, show_old_ids=True)
+@app.route('/get_patient_data', methods=['GET'])
+def get_patient_data():
+    person_id = request.args.get('id')
+    if not person_id:
+        return jsonify({"error": "No patient ID provided"}), 400
+
+    # Remove 'json/' prefix and '.json' suffix if present
+    if person_id.startswith('json/') and person_id.endswith('.json'):
+        person_id = person_id[5:-5]
+
+    try:
+        # Fetch patient data
+        patient_data = omop.get_patient(person_id, {}, None, None)
+
+        # Update dictionary
+        dictionary_path = 'json/dictionary.json'
+        if os.path.exists(dictionary_path):
+            with open(dictionary_path, 'r') as f:
+                dictionary = json.load(f)
         else:
-            tf = StringIO()
-            cms_analyze.compute(all_paths, {}, False, tf, filter_zero=True)
-            tf.flush()
-            tf.seek(0)
-            lines = tf.readlines()[-max_num:] if max_num is not None else tf.readlines()
-            for line in lines:
-                patients.add(json_dir + line.strip() + '.json')
-        save_patients()
+            dictionary = {}
 
-    dictionary = {}
-    if use_cache:
-        if os.path.isfile(dictionary_file):
-            with open(dictionary_file, 'r') as input:
-                dictionary = json.loads(input.read())
-        else:
-            os.makedirs(json_dir)
-            # write the initial empty dictionary
-            # also ensures that the folder is writeable
-            with open(dictionary_file, 'w') as output:
-                output.write("{}")
+        for group, group_data in patient_data.items():
+            if isinstance(group_data, dict):
+                if group not in dictionary:
+                    dictionary[group] = {}
+                dictionary[group].update(group_data)
 
-    server = create_server((addr, port))
-    server.bind_path('/', '..')
+        # Save updated dictionary
+        with open(dictionary_path, 'w') as f:
+            json.dump(dictionary, f)
 
-    prefix = '/' + os.path.basename(os.path.normpath(server.base_path))
+        # Save patient data as JSON file
+        patient_file_path = f'json/{person_id}.json'
+        with open(patient_file_path, 'w') as f:
+            json.dump(patient_data, f)
 
-    server.add_default_white_list()
-    server.add_file_patterns([
-            prefix + '/' + json_dir + '*',
-            prefix + '/' + patients_list
-        ], True)
-    server.favicon_fallback = 'favicon.ico'
-    server.report_slow_requests = True
-    if debug:
-        server.suppress_noise = True
+        return jsonify(patient_data)
 
-    @server.text_get(prefix + '/' + patients_list, 0)
-    def get_list(req, args):
-        return '\n'.join(sorted(list(patients)))
-
-    @server.json_get(prefix + '/' + json_dir, 1)
-    def get_patient(req, args):
-        pid = args['paths'][0]
-        if pid.endswith('.json') and use_db:
-            pid = pid[:-len('.json')]
-            pid = omop.get_person_id(pid)
-        cache_file = os.path.join(json_dir, pid)
-        p_name = json_dir + pid.strip()
-        if p_name not in patients:
-            patients.add(p_name)
-            save_patients()
-        if pid.endswith('.json'):
-            pid = pid[:-len('.json')]
-        if not os.path.isfile(cache_file) or not use_cache:
-            if use_db:
-                patient = omop.get_patient(pid, dictionary, line_file, class_file)
-            else:
-                patient = cms_get_patient.process(all_paths, line_file, class_file, pid)
-                build_dictionary.extractEntries(dictionary, patient)
-            if use_cache:
-                with open(cache_file, 'w') as pf:
-                    pf.write(json_dumps(patient))
-                    pf.flush()
-            if use_cache:
-                with open(dictionary_file, 'w') as output:
-                    output.write(json_dumps(dictionary))
-                    output.flush()
-            return patient
-        with open(cache_file, 'r') as pf:
-            return json.loads(pf.read())
-
-    @server.json_get(prefix + '/' + dictionary_file)
-    def get_dictionary(req, args):
-        return dictionary
-
-    msg("starting server at {0}:{1}", addr if addr else 'localhost', port)
-    server.serve_forever()
-    msg("shutting down..")
-    server.server_close()
-
-def usage():
-    print("""
-usage: {0} [-h] [--debug] [-a <address>] [-p <port>] [-c <file>] [-f <file>] [-s <file>] [-l <file>] [--max-num <number>] [--cms-path <path>]
--h: print help
--a <address>: specifies the server address. default is 'localhost'
--p <port>: specifies the server port. default is '8080'
--c <file>: specifies config file. default is 'config.txt'
--f <file>: specifies table format file. default is 'format.json'
--s <file>: specifies span class file. default is 'style_classes.json'
--l <file>: specifies optional line and span info file
---max-num <number>: specifies the maximal initial size of the patient list
---cms-path <path>: specifies the path to CMS compatible files
---debug: only report unsuccessful requests
-""".strip().format(sys.argv[0]), file=sys.stderr)
-    exit(1)
+    except Exception as e:
+        logger.error(f"Error fetching patient data: {e}")
+        return jsonify({"error": f"Failed to fetch patient data: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    max_num = 100
-    settings_file = 'config.txt'
-    format_file = 'format.json'
-    class_file = 'style_classes.json'
-    line_file = None
-    cms_path = 'cms/'
-    addr = ''
-    port = 8080
-    debug = False
-    args = sys.argv[:]
-    args.pop(0)
-    while args:
-        arg = args.pop(0)
-        if arg == '-h':
-            usage()
-        elif arg == '-a':
-            if not args:
-                print('expected argument for -a', file=sys.stderr)
-                usage()
-            addr = args.pop(0)
-        elif arg == '-p':
-            if not args:
-                print('expected argument for -p', file=sys.stderr)
-                usage()
-            port = int(args.pop(0))
-        elif arg == '-c':
-            if not args:
-                print('expected argument for -c', file=sys.stderr)
-                usage()
-            settings_file = args.pop(0)
-        elif arg == '-f':
-            if not args:
-                print('expected argument for -f', file=sys.stderr)
-                usage()
-            format_file = args.pop(0)
-        elif arg == '-s':
-            if not args:
-                print('expected argument for -s', file=sys.stderr)
-                usage()
-            class_file = args.pop(0)
-        elif arg == '-l':
-            if not args:
-                print('expected argument for -l', file=sys.stderr)
-                usage()
-            line_file = args.pop(0)
-        elif arg == '--max-num':
-            if not args:
-                print('expected argument for --max-num', file=sys.stderr)
-                usage()
-            max_num = int(args.pop(0))
-        elif arg == '--cms-path':
-            if not args:
-                print('expected argument for --cms-path', file=sys.stderr)
-                usage()
-            cms_path = args.pop(0)
-        elif arg == '--debug':
-            debug = True
-        else:
-            print('illegal argument: '+arg, file=sys.stderr)
-            usage()
-    start_server(max_num, settings_file, format_file, class_file, line_file, cms_path, addr, port, debug)
+    app.run(debug=True, host='127.0.0.1', port=8080)
+
+
+
+

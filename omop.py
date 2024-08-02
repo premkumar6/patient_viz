@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
-# -*- mode: python; -*-
-"""exec" "`dirname \"$0\"`/call.sh" "$0" "$@";" """
 from __future__ import print_function
 
 import os
 import sys
 import json
 import sqlalchemy
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from decimal import Decimal
 
 gender_label = {
     "M": "primary",
@@ -37,11 +36,9 @@ measure_flag_map = {
     }
 }
 
-from StringIO import StringIO
-
 import util
 
-class OMOP():
+class OMOP:
     def __init__(self, settings, debug_output):
         username = settings['omop_user']
         password = settings['omop_passwd']
@@ -49,6 +46,9 @@ class OMOP():
         port = settings['omop_port']
         database = settings['omop_db']
         engine = settings.get('omop_engine', 'postgresql')
+
+        self.schema = settings['omop_schema']
+        self.db = sqlalchemy.create_engine(f'{engine}://{username}:{password}@{host}:{port}/{database}')
         self._parents = {}
         self._codes = {}
         if settings['omop_use_alt_hierarchies']:
@@ -58,41 +58,33 @@ class OMOP():
             if 'ccs_proc' in settings:
                 self._codes['Procedure_ICD9CM'] = {}
                 self._parents['Procedure_ICD9CM'] = util.read_CCS(util.get_file(settings['ccs_proc'], debug_output), self._codes['Procedure_ICD9CM'])
-        self.schema = settings['omop_schema']
-        self.db = sqlalchemy.create_engine('{0}://{1}:{2}@{3}:{4}/{5}'.format(engine, username, password, host, port, database))
 
     def _exec(self, query, **args):
         connection = None
         try:
             connection = self.db.connect()
             q = query.format(schema=self.schema)
-            # DEBUG!
-            qq = q
-            for k in args.keys():
-                qq = qq.replace(':'+str(k), "'" + str(args[k]) + "'")
-            qq = qq + ';'
-            print("{0}".format(qq))
-            # DEBUG! END
-            return connection.execute(sqlalchemy.text(q), **args)
+            stmt = sqlalchemy.text(q).bindparams(**args)
+            result = connection.execute(stmt)
+            return result.mappings()
         finally:
-            if connection is not None:
+            if connection:
                 connection.close()
 
     def _exec_one(self, query, **args):
         result = self._exec(query, **args)
-        res = None
-        for r in result:
-            if res is not None:
-                raise ValueError("expected one result row got more\n{0}\n".format(query))
-            res = r
+        res = result.first()
         if res is None:
-            raise ValueError("expected one result row got 0\n{0}\n".format(query))
+            raise ValueError(f"expected one result row got 0\n{query}\n")
         return res
-
+    
     def list_patients(self, patients, prefix="", limit=None, show_old_ids=False):
         limit_str = " LIMIT :limit" if limit is not None else ""
-        query = "SELECT person_id, person_source_value FROM {schema}.person{limit}".format(schema=self.schema, limit=limit_str)
-        for r in self._exec(query, limit=limit):
+        query = f"SELECT person_id, person_source_value FROM {self.schema}.person{limit_str}"
+        params = {}
+        if limit is not None:
+            params['limit'] = limit
+        for r in self._exec(query, **params):
             patients.add(str(prefix) + (str(r['person_id']) if not show_old_ids else str(r['person_source_value']) + '.json'))
 
     def get_person_id(self, pid):
@@ -533,17 +525,26 @@ class OMOP():
             name = row['m_name']
             vocab = row['m_vocab']
             group = "Measurement" if row['m_domain'] is None else row['m_domain']
-            lab_value = float(row['m_value']) if 'm_value' in row and row['m_value'] else row['m_orig_value']
-            lab_low = float(row['m_low'] if row['m_low'] is not None else '-inf')
-            lab_high = float(row['m_high'] if row['m_high'] is not None else 'inf')
+            lab_value = row['m_value']
+            lab_low = row['m_low']
+            lab_high = row['m_high']
+
+            #print(f"Processing row: {row}")
+            #print(f"Initial lab_value: {lab_value}, lab_low: {lab_low}, lab_high: {lab_high}")
+            lab_value = float(lab_value) if lab_value is not None and isinstance(lab_value, (int, float, Decimal)) else float('-inf')
+            lab_low = float(lab_low) if lab_low is not None and isinstance(lab_low, (int, float, Decimal)) else float('-inf')
+            lab_high = float(lab_high) if lab_high is not None and isinstance(lab_high, (int, float, Decimal)) else float('inf')
+            #print(f"Converted lab_value: {lab_value}, lab_low: {lab_low}, lab_high: {lab_high}")
+
             lab_flag = ""
-            if lab_value is not None:
+            if lab_value is not None and lab_value != float('-inf'):
                 if lab_value <= lab_low:
                     lab_flag = "L"
                 elif lab_value >= lab_high:
                     lab_flag = "H"
             else:
                 lab_value = "n/a"
+            #print(f"Final lab_value: {lab_value}, lab_flag: {lab_flag}")
             desc = "{0} ({1} {2})".format(name, vocab, code)
             self.add_dict(dict, new_dict_entries, group, vocab, d_id, name, desc, code, unmapped)
             event = self.create_event(group, str(vocab) + str(d_id), id_row, True, lab_flag, str(lab_value))
@@ -552,28 +553,24 @@ class OMOP():
 
     def get_visits(self, pid, obj):
         classes = obj["classes"]
-        query = """SELECT
-             v.visit_start_date as date_start,
-             v.visit_end_date as date_end,
-             c.concept_name as c_name
-            FROM
-             {schema}.visit_occurrence as v
-            LEFT JOIN {schema}.concept as c ON (
-             v.visit_concept_id = c.concept_id
-            ) WHERE
-             v.person_id = :pid
-             AND c.concept_name IN ( {classes} )
-        """.format(schema=self.schema, classes=','.join(sorted([ "'{0}'".format(k) for k in classes.keys()])))
+        if not classes:
+            return
+        query = f"""
+            SELECT v.visit_start_date as date_start, v.visit_end_date as date_end, c.concept_name as c_name
+            FROM {self.schema}.visit_occurrence as v
+            LEFT JOIN {self.schema}.concept as c ON (v.visit_concept_id = c.concept_id)
+            WHERE v.person_id = :pid AND c.concept_name IN ({','.join([f"'{k}'" for k in classes.keys()])})
+        """
         v_spans = obj["v_spans"]
         for row in self._exec(query, pid=pid):
             visit_name = str(row['c_name'])
-            date_start = self.to_time(row['date_start'])
-            date_end = self.to_time(row['date_end'])
-            v_spans.append({
-                "class": visit_name,
-                "from": date_start,
-                "to": date_end
-            })
+            date_start_dt = self.to_time(row['date_start'])
+            date_end_dt = self.to_time(row['date_end'])
+
+            if date_start_dt is None:
+                continue
+            
+            v_spans.append({"class": visit_name, "from": self.format_time(date_start_dt), "to": self.format_time(date_end_dt)})
 
     def get_patient(self, pid, dictionary, line_file, class_file):
         obj = {
@@ -610,3 +607,86 @@ class OMOP():
         self.add_info(obj, "event_count", "Events", len(obj["events"]))
         self.update_hierarchies(dictionary, new_dict_entries)
         return obj
+    
+def generate_patient_files(batch_size=10):
+    settings = {
+        'omop_user': 'etl_viz',
+        'omop_passwd': 'prem123',
+        'omop_host': 'localhost',
+        'omop_port': '5432',
+        'omop_db': 'synthea10',
+        'omop_schema': 'cdm_synthea10',
+        'omop_engine': 'postgresql',
+        'omop_use_alt_hierarchies': True,
+        'use_cache': True,
+        'ccs_diag': 'path/to/ccs_diag/file',
+        'ccs_proc': 'path/to/ccs_proc/file',
+    }
+    # settings = {
+    #     'omop_user': 'patien_viz_user',
+    #     'omop_passwd': 's0382292',
+    #     'omop_host': 'localhost',
+    #     'omop_port': '5432',
+    #     'omop_db': 'omop',
+    #     'omop_schema': 'omop_schema',
+    #     'omop_engine': 'postgresql',
+    #     'omop_use_alt_hierarchies': True,
+    #     'use_cache': True,
+    #     'ccs_diag': 'path/to/ccs_diag/file',
+    #     'ccs_proc': 'path/to/ccs_proc/file',
+    # }
+
+    omop = OMOP(settings, True)
+    patients = set()
+    if os.path.isfile('patients.txt'):
+        with open('patients.txt', 'r') as pf:
+            patients = set(pf.read().splitlines())
+
+    omop.list_patients(patients, prefix="json/")
+    save_patients(patients)
+    use_cache = settings.get('use_cache', True)
+
+    dictionary = {}
+    if os.path.isfile('json/dictionary.json'):
+        with open('json/dictionary.json', 'r') as df:
+            dictionary = json.load(df)
+
+    # Ensure the 'json' directory exists
+    if not os.path.exists('json'):
+        os.makedirs('json')
+
+    patient_list = list(patients)
+    total_patients = len(patient_list)
+
+    def process_patient(patient):
+        pid = patient.split('/')[-1].replace('.json', '')
+        cache_file = os.path.join('json', f"{pid}.json")
+        
+        if not os.path.isfile(cache_file) or not use_cache:
+            patient_data = omop.get_patient(pid, dictionary, None, None)
+            with open(cache_file, 'w') as cf:
+                json.dump(patient_data, cf)
+        
+        return dictionary
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_patient = {executor.submit(process_patient, patient): patient for patient in patient_list}
+        for future in as_completed(future_to_patient):
+            patient = future_to_patient[future]
+            try:
+                result = future.result()
+                dictionary.update(result)
+            except Exception as exc:
+                print(f'{patient} generated an exception: {exc}')
+
+    with open('json/dictionary.json', 'w') as df:
+        json.dump(dictionary, df)
+
+def save_patients(patients):
+    with open('patients.txt', 'w') as pf:
+        pf.write('\n'.join(sorted(list(patients))))
+        pf.flush()
+
+if __name__ == '__main__':
+    generate_patient_files(batch_size=10)
+

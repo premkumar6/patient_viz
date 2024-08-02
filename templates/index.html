@@ -1,0 +1,343 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Patient Viz</title>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='lib/jk-js/lib/bootstrap/css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='lib/jk-js/lib/d3/d3.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/busy.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/time.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/text.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/path.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/stat.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/util.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/jk-js/jkjs/zui.js') }}"></script>
+  <script src="{{ url_for('static', filename='lib/colorbrewer/colorbrewer.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/type.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/event.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/overview.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/linechart.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/typeview.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/eventview.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/typepool.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/labels.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/cluster.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/histogram.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shared.js') }}" charset="utf-8"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <style>
+    .custom-input {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 14px;
+      margin-right: 10px;
+    }
+
+    .custom-button {
+      background-color: #5bc0de;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 14px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .time-range-container {
+      margin-top: 10px;
+      background-color: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      font-family: Arial, sans-serif;
+    }
+
+    .time-range-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .time-range-content {
+      font-size: 14px;
+      font-weight: bold;
+      background-color: #fff;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      white-space: pre-line; /* Allow line breaks */
+    }
+  </style>
+</head>
+<body onload="start()">
+
+<header id="pHead" class="navbar navbar-default navbar-static-top">
+  <div class="container">
+    <div class="form-inline">
+      <input type="text" id="patientIdInput" class="custom-input" placeholder="Enter Patient ID" />
+      <button id="selectFileBtn" class="custom-button">Select File</button>
+      <input type="text" id="eventSearchBar" class="custom-input" placeholder="Search events..." />
+    </div>
+    <ul class="list-inline" id="pHeadList">
+      <li><div>
+        <strong>Time:</strong>
+        <span id="pStart"></span> - <span id="pEnd"></span>
+      </div></li><li><div class="checkbox">
+        <label>
+          <input id="pShowSpans" type="checkbox" checked="checked"> Show Spans
+        </label>
+        <label id="pShowLabel">
+          <input id="pShow" type="checkbox"> Show All Events
+        </label>
+        <label>
+          <input id="pVSel" type="checkbox"> Vertical Sel.
+        </label>
+        <label>
+          <input id="pUseLens" type="checkbox"> Use Lens
+        </label>
+        <label>
+          Y-Aggr: <select id="pYCluster"></select>
+        </label>
+        <label>
+          Connect: <input id="pConnectRange" type="range" value="0" min="0" max="50"> <span id="pConnectRangeDisplay">0</span>
+        </label>
+      </div></li>
+      <li><div id="hCon"><strong>Sort types: </strong></div></li>
+      <li><div id="xMode"><strong>X: </strong></div></li>
+      <li><div id="yMode"><strong>Y: </strong></div></li>
+    </ul>
+  </div>
+</header>
+<div id="pTypesLeft"></div>
+<div id="pContent">
+  <div id="pSVG" style="width: 800px; height: 600px;"></div>
+</div>
+<div id="pTypesRight">
+  <div id="sortDropdownContainer"></div>
+  <div id="eventViewContainer"></div> 
+  <div id="typeViewContainer"></div>
+  <div id="timeRangeDisplay" class="time-range-container">
+    <div class="time-range-title">Time Range:</div>
+    <div id="timeRangeContent" class="time-range-content"></div>
+  </div>
+  <div id="filteredEvents"></div>
+</div>
+</body>
+</html>
+
+
+
+
+ -->
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+   <title>Patient Viz</title>
+   <meta charset="utf-8">
+   <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='lib/jk-js/lib/bootstrap/css/bootstrap.min.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+   <script src="{{ url_for('static', filename='lib/jk-js/lib/d3/d3.min.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/busy.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/time.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/text.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/path.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/stat.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/util.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/zui.js') }}"></script>
+   <script src="{{ url_for('static', filename='lib/colorbrewer/colorbrewer.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/type.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/event.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/overview.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/linechart.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/typeview.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/eventview.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/typepool.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/labels.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/cluster.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/histogram.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/shared.js') }}" charset="utf-8"></script>
+   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+   <style>
+     body {
+       font-family: 'Arial', sans-serif;
+       background-color: #f8f9fa;
+       color: #343a40;
+     }
+ 
+     .custom-input {
+       border: 1px solid #ccc;
+       border-radius: 4px;
+       padding: 6px 12px;
+       font-size: 14px;
+       margin-right: 10px;
+     }
+ 
+     .custom-button {
+       background-color: #5bc0de;
+       border: none;
+       color: white;
+       padding: 6px 12px;
+       text-align: center;
+       text-decoration: none;
+       display: inline-block;
+       font-size: 14px;
+       margin: 4px 2px;
+       cursor: pointer;
+       border-radius: 4px;
+       transition: background-color 0.3s ease;
+     }
+ 
+     .custom-button:hover {
+       background-color: #31b0d5;
+     }
+ 
+     .time-range-container {
+       margin-top: 10px;
+       background-color: #f9f9f9;
+       padding: 10px;
+       border-radius: 5px;
+       box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+       font-family: Arial, sans-serif;
+     }
+ 
+     .time-range-title {
+       font-weight: bold;
+       margin-bottom: 5px;
+     }
+ 
+     .time-range-content {
+       font-size: 14px;
+       font-weight: bold;
+       background-color: #fff;
+       padding: 5px;
+       border: 1px solid #ddd;
+       border-radius: 5px;
+       white-space: pre-line; /* Allow line breaks */
+     }
+ 
+     .opening-page {
+       text-align: center;
+       padding: 100px 20px;
+       font-family: Arial, sans-serif;
+       background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+       color: white;
+       min-height: 100vh;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+     }
+ 
+     .opening-page h1 {
+       font-size: 3em;
+       margin-bottom: 20px;
+       font-weight: bold;
+     }
+ 
+     .opening-page p {
+       font-size: 1.2em;
+       margin-bottom: 40px;
+     }
+ 
+     .footer {
+       text-align: center;
+       padding: 10px;
+       background-color: #343a40;
+       color: white;
+       position: fixed;
+       width: 100%;
+       bottom: 0;
+     }
+ 
+     .footer p {
+       margin: 0;
+       font-size: 14px;
+     }
+ 
+     .container {
+       display: none;
+     }
+   </style>
+ </head>
+ <body onload="start()">
+ 
+ <div class="opening-page">
+   <h1>Welcome to Patient Viz</h1>
+   <p>Please use the navigation below to explore the patient's data.</p>
+   <button onclick="showContent()" class="custom-button">Get Started</button>
+ </div>
+ 
+ <header id="pHead" class="navbar navbar-default navbar-static-top container">
+   <div class="container">
+     <div class="form-inline">
+       <input type="text" id="patientIdInput" class="custom-input" placeholder="Enter Patient ID" />
+       <button id="selectFileBtn" class="custom-button">Select File</button>
+       <input type="text" id="eventSearchBar" class="custom-input" placeholder="Search events..." />
+     </div>
+     <ul class="list-inline" id="pHeadList">
+       <li><div>
+         <strong>Time:</strong>
+         <span id="pStart"></span> - <span id="pEnd"></span>
+       </div></li><li><div class="checkbox">
+         <label>
+           <input id="pShowSpans" type="checkbox" checked="checked"> Show Spans
+         </label>
+         <label id="pShowLabel">
+           <input id="pShow" type="checkbox"> Show All Events
+         </label>
+         <label>
+           <input id="pVSel" type="checkbox"> Vertical Sel.
+         </label>
+         <label>
+           <input id="pUseLens" type="checkbox"> Use Lens
+         </label>
+         <label>
+           Y-Aggr: <select id="pYCluster"></select>
+         </label>
+         <label>
+           Connect: <input id="pConnectRange" type="range" value="0" min="0" max="50"> <span id="pConnectRangeDisplay">0</span>
+         </label>
+       </div></li>
+       <li><div id="hCon"><strong>Sort types: </strong></div></li>
+       <li><div id="xMode"><strong>X: </strong></div></li>
+       <li><div id="yMode"><strong>Y: </strong></div></li>
+     </ul>
+   </div>
+ </header>
+ <div id="pTypesLeft" class="container"></div>
+ <div id="pContent" class="container">
+   <div id="pSVG" style="width: 800px; height: 600px;"></div>
+ </div>
+ <div id="pTypesRight" class="container">
+   <div id="sortDropdownContainer"></div>
+   <div id="eventViewContainer"></div> 
+   <div id="typeViewContainer"></div>
+   <div id="timeRangeDisplay" class="time-range-container">
+     <div class="time-range-title">Time Range:</div>
+     <div id="timeRangeContent" class="time-range-content"></div>
+   </div>
+   <div id="filteredEvents"></div>
+ </div>
+ 
+ <div class="footer">
+   <p>Designed and developed by the TDS Data Science team</p>
+ </div>
+ 
+ <script>
+   function showContent() {
+     document.querySelector('.opening-page').style.display = 'none';
+     document.querySelectorAll('.container').forEach(container => {
+       container.style.display = 'block';
+     });
+   }
+ </script>
+ </body>
+ </html>
+ 

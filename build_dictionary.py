@@ -92,7 +92,7 @@ class EntryCreator(object):
         return res
 
     def init(self, settings, settingsFile):
-    	for k in self._baseTypes.keys():
+        for k in self._baseTypes.keys():
             self._codeTables[k] = self._baseTypes[k].init(settings)
         util.save_config(settings, settingsFile)
 
@@ -183,7 +183,7 @@ class CmsProviderCode(TypeCode):
                 fromPN = int(l[0:2])
                 toPN = int(l[5:7])
                 desc = l[9:].strip()
-                for pn in xrange(fromPN, toPN + 1):
+                for pn in range(fromPN, toPN + 1):
                     res[("00" + str(pn))[-2:]] = desc
         return res
 
