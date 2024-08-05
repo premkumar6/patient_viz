@@ -98,3 +98,20 @@
     fill-opacity: .125;
     shape-rendering: crispEdges;
 }
+
+#pHeadList_gender {
+    color: white !important; 
+    background-color: gray;
+    padding: 3px 5px;           
+    border-radius: 3px;         
+  }
+  
+  .label-U {
+    color: white !important; 
+    background-color: grey; 
+    padding: 3px 5px;           
+    border-radius: 3px;         
+  }
+  
+  
+

@@ -1,8 +1,5 @@
 from __future__ import print_function
-
-import os
 import sys
-import json
 import sqlalchemy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
@@ -119,8 +116,8 @@ class OMOP:
              person_id = :pid
         """
         result = self._exec_one(query, pid=str(pid))
-        if result['person_source_value']:
-            self.add_info(obj, 'id_alt', 'ID', str(result['person_source_value']) + ".json")
+        # if result['person_source_value']:
+        #     self.add_info(obj, 'id_alt', 'ID', str(result['person_source_value']) + ".json")
         self.add_info(obj, 'born', 'Born', int(result['year_of_birth']))
         gender = str(result['gender_concept_name'])
         # defaults to 'U' for "unknown"
@@ -140,7 +137,6 @@ class OMOP:
             res["flag_value"] = result
             res["flag"] = result_flag
         return res
-
     def add_dict(self, dict, new_dict_entries, group, prefix, id, name, desc, code, unmapped):
         alt_hierarchies = str(group) + '_' + str(prefix)
         if group not in dict:
@@ -608,85 +604,88 @@ class OMOP:
         self.update_hierarchies(dictionary, new_dict_entries)
         return obj
     
-def generate_patient_files(batch_size=10):
-    settings = {
-        'omop_user': 'etl_viz',
-        'omop_passwd': 'prem123',
-        'omop_host': 'localhost',
-        'omop_port': '5432',
-        'omop_db': 'synthea10',
-        'omop_schema': 'cdm_synthea10',
-        'omop_engine': 'postgresql',
-        'omop_use_alt_hierarchies': True,
-        'use_cache': True,
-        'ccs_diag': 'path/to/ccs_diag/file',
-        'ccs_proc': 'path/to/ccs_proc/file',
-    }
-    # settings = {
-    #     'omop_user': 'patien_viz_user',
-    #     'omop_passwd': 's0382292',
-    #     'omop_host': 'localhost',
-    #     'omop_port': '5432',
-    #     'omop_db': 'omop',
-    #     'omop_schema': 'omop_schema',
-    #     'omop_engine': 'postgresql',
-    #     'omop_use_alt_hierarchies': True,
-    #     'use_cache': True,
-    #     'ccs_diag': 'path/to/ccs_diag/file',
-    #     'ccs_proc': 'path/to/ccs_proc/file',
-    # }
 
-    omop = OMOP(settings, True)
-    patients = set()
-    if os.path.isfile('patients.txt'):
-        with open('patients.txt', 'r') as pf:
-            patients = set(pf.read().splitlines())
+# For generating the json files
+    
+# def generate_patient_files(batch_size=10):
+#     settings = {
+#         'omop_user': 'etl_viz',
+#         'omop_passwd': 'prem123',
+#         'omop_host': 'localhost',
+#         'omop_port': '5432',
+#         'omop_db': 'synthea10',
+#         'omop_schema': 'cdm_synthea10',
+#         'omop_engine': 'postgresql',
+#         'omop_use_alt_hierarchies': True,
+#         'use_cache': True,
+#         'ccs_diag': 'path/to/ccs_diag/file',
+#         'ccs_proc': 'path/to/ccs_proc/file',
+#     }
+#     # settings = {
+#     #     'omop_user': 'patien_viz_user',
+#     #     'omop_passwd': 's0382292',
+#     #     'omop_host': 'localhost',
+#     #     'omop_port': '5432',
+#     #     'omop_db': 'omop',
+#     #     'omop_schema': 'omop_schema',
+#     #     'omop_engine': 'postgresql',
+#     #     'omop_use_alt_hierarchies': True,
+#     #     'use_cache': True,
+#     #     'ccs_diag': 'path/to/ccs_diag/file',
+#     #     'ccs_proc': 'path/to/ccs_proc/file',
+#     # }
 
-    omop.list_patients(patients, prefix="json/")
-    save_patients(patients)
-    use_cache = settings.get('use_cache', True)
+#     omop = OMOP(settings, True)
+#     patients = set()
+#     if os.path.isfile('patients.txt'):
+#         with open('patients.txt', 'r') as pf:
+#             patients = set(pf.read().splitlines())
 
-    dictionary = {}
-    if os.path.isfile('json/dictionary.json'):
-        with open('json/dictionary.json', 'r') as df:
-            dictionary = json.load(df)
+#     omop.list_patients(patients, prefix="json/")
+#     save_patients(patients)
+#     use_cache = settings.get('use_cache', True)
 
-    # Ensure the 'json' directory exists
-    if not os.path.exists('json'):
-        os.makedirs('json')
+#     dictionary = {}
+#     if os.path.isfile('json/dictionary.json'):
+#         with open('json/dictionary.json', 'r') as df:
+#             dictionary = json.load(df)
 
-    patient_list = list(patients)
-    total_patients = len(patient_list)
+#     # Ensure the 'json' directory exists
+#     if not os.path.exists('json'):
+#         os.makedirs('json')
 
-    def process_patient(patient):
-        pid = patient.split('/')[-1].replace('.json', '')
-        cache_file = os.path.join('json', f"{pid}.json")
+#     patient_list = list(patients)
+#     total_patients = len(patient_list)
+
+#     def process_patient(patient):
+#         pid = patient.split('/')[-1].replace('.json', '')
+#         cache_file = os.path.join('json', f"{pid}.json")
         
-        if not os.path.isfile(cache_file) or not use_cache:
-            patient_data = omop.get_patient(pid, dictionary, None, None)
-            with open(cache_file, 'w') as cf:
-                json.dump(patient_data, cf)
+#         if not os.path.isfile(cache_file) or not use_cache:
+#             patient_data = omop.get_patient(pid, dictionary, None, None)
+#             with open(cache_file, 'w') as cf:
+#                 json.dump(patient_data, cf)
         
-        return dictionary
+#         return dictionary
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        future_to_patient = {executor.submit(process_patient, patient): patient for patient in patient_list}
-        for future in as_completed(future_to_patient):
-            patient = future_to_patient[future]
-            try:
-                result = future.result()
-                dictionary.update(result)
-            except Exception as exc:
-                print(f'{patient} generated an exception: {exc}')
+#     with ThreadPoolExecutor(max_workers=4) as executor:
+#         future_to_patient = {executor.submit(process_patient, patient): patient for patient in patient_list}
+#         for future in as_completed(future_to_patient):
+#             patient = future_to_patient[future]
+#             try:
+#                 result = future.result()
+#                 dictionary.update(result)
+#             except Exception as exc:
+#                 print(f'{patient} generated an exception: {exc}')
 
-    with open('json/dictionary.json', 'w') as df:
-        json.dump(dictionary, df)
+#     with open('json/dictionary.json', 'w') as df:
+#         json.dump(dictionary, df)
 
-def save_patients(patients):
-    with open('patients.txt', 'w') as pf:
-        pf.write('\n'.join(sorted(list(patients))))
-        pf.flush()
+# def save_patients(patients):
+#     with open('patients.txt', 'w') as pf:
+#         pf.write('\n'.join(sorted(list(patients))))
+#         pf.flush()
 
-if __name__ == '__main__':
-    generate_patient_files(batch_size=10)
+# if __name__ == '__main__':
+#     generate_patient_files(batch_size=10)
 
