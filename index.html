@@ -6,6 +6,7 @@
   <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='lib/jk-js/lib/bootstrap/css/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="{{ url_for('static', filename='lib/jk-js/lib/d3/d3.min.js') }}"></script>
   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/busy.js') }}"></script>
   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/time.js') }}"></script>
@@ -30,7 +31,7 @@
   <script src="{{ url_for('static', filename='js/decrypt.js') }}"></script>
   <style>
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: 'Roboto', sans-serif;
       background-color: #f8f9fa;
       color: #343a40;
     }
@@ -44,22 +45,22 @@
     }
 
     .custom-button {
-      background-color: #8C1515; /* Tomato red */
+      background-color: #8C1515;
       border: none;
       color: white;
-      padding: 10px 20px; /* Increased padding */
+      padding: 10px 20px;
       text-align: center;
       text-decoration: none;
       display: inline-block;
-      font-size: 16px; /* Increased font size */
-      margin: 4px 2px;
+      font-size: 16px;
+      margin: 10px 2px;
       cursor: pointer;
       border-radius: 4px;
       transition: background-color 0.3s ease;
     }
 
     .custom-button:hover {
-      background-color: #8C1515;
+      background-color: #A21C1C;
     }
 
     .time-range-container {
@@ -90,34 +91,30 @@
       text-align: center;
       padding: 100px 20px;
       font-family: 'Roboto', sans-serif;
-      /* Red and white gradient background */
-      background: linear-gradient(to bottom, #8C1515, white); /* Adjust angles as needed */
-      color: #343a40; /* Darker text for contrast */
+      background: #8C1515;
+      color: white;
       min-height: 100vh;
-      display: flex; 
-      flex-direction: column; 
+      display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
     }
+
     .opening-page h1 {
       font-size: 3em;
       margin-bottom: 20px;
       font-weight: bold;
     }
+
     .opening-page p {
       font-size: 1.2em;
       margin-bottom: 40px;
     }
 
-    /* Hide Other Content Initially */
-    .container, header {
-      display: none; 
-    }
-
     .footer {
       text-align: center;
       padding: 10px;
-      background-color: #8C1515;;
+      background-color: #343a40;
       color: white;
       position: fixed;
       width: 100%;
@@ -159,28 +156,52 @@
       margin-right: 10px;
     }
 
-    #pHeadList {
+    #pHeadList, #pHeadList2 {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       margin: 10px 0;
     }
 
-    #pHeadList > li {
+    #pHeadList > li, #pHeadList2 > li {
       margin-right: 20px;
+    }
+
+    .icon-container {
+      display: flex;
+      align-items: center;
+      margin-right: 10px;
+    }
+
+    .icon-container i {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+
+    .checkbox label, #hCon strong, #xMode strong, #yMode strong {
+      display: flex;
+      align-items: center;
+    }
+
+    .checkbox input, select, input[type="range"] {
+      margin-left: 5px;
     }
   </style>
 </head>
 <body onload="start()">
 
 <div class="opening-page">
-    <h1>Welcome to Patient Viz</h1>
-    <p>Please use the navigation below to explore the patient's data.</p>
-    <button onclick="showContent()" class="custom-button">Get Started</button>
+  <h1>Welcome to Patient Viz</h1>
+  <p>Please use the navigation below to explore the patient's data.</p>
+  <button onclick="showContent()" class="custom-button"><i class="fas fa-play"></i> Get Started</button>
 </div>
+
 <header id="pHead" class="navbar navbar-default navbar-static-top container">
   <div class="container">
+    <div class="form-inline">
+      <img src="{{ url_for('static', filename='SHC logo.jpeg') }}" alt="Stanford Health Care" class="header-logo">
+      <div>
         <input type="text" id="patientIdInput" class="custom-input" placeholder="Enter Patient ID" />
         <button id="selectFileBtn" class="custom-button">Extract Patient File</button>
       </div>
@@ -252,7 +273,13 @@
       container.style.display = 'block';
     });
   }
+
+  // Add event listener for the help button
+  document.getElementById('helpButton').addEventListener('click', function(e) {
+    e.preventDefault();
+    alert('Help functionality to be implemented.');
+  });
 </script>
+
 </body>
-</html> 
-  
+</html>

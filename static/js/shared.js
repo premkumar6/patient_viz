@@ -13,6 +13,93 @@ searchBar.on("input", function() {
   pool.updateLook();
 });
 
+// function refreshInfo(pid, person) {
+//   headList.forEach(function(sel) {
+//     sel.remove();
+//   });
+  
+//   headList = [];
+
+//   var sel = d3.select("#pHeadList");
+//   var hasId = false;
+//   var id = pid;
+//   var selId = null; // Initialize selId
+
+//   function addItem(item) {
+//     var li = sel.insert("li", ":first-child");
+//     var div = li.append("div");
+//     div.append("strong").text(item["name"] + ': ');
+//     if (item["id"] === "id" && !selId)  {
+//       hasId = true;
+//       selId = div.append("select");
+//       id = item["value"];
+//     } else {
+//       var span = div.append("span").attr({
+//         "id": headPrefix + item["id"]
+//       }).text(item["value"]);
+//       if ("label" in item) {
+//         span.classed("label", true);
+//         if (item["label"] !== "") {
+//           span.classed("label-" + item["label"], true);
+//         }
+//       } else if (!Number.isNaN(+item["value"])) {
+//         span.classed("badge", true);
+//       }
+//     }
+//     headList.push(li);
+//   }
+
+//   if ("info" in person) {
+//     person["info"].sort(function(a, b) {
+//       return d3.descending(a["id"], b["id"]);
+//     });
+//     person["info"].forEach(function(item) {
+//       addItem(item);
+//     });
+//   }
+
+//   if (!hasId) {
+//     addItem({
+//       "id": "id",
+//       "name": "File",
+//       "value": pid
+//     });
+//   }
+
+//   function setSelect() {
+//     if (!selId) return false; 
+
+//     var found = false;
+//     selId.selectAll("option").each(function(p, i) {
+//       if (p !== id) {
+//         return;
+//       }
+//       var tmpChg = selId.on("change");
+//       selId.on("change", null);
+//       selId.node().selectedIndex = i;
+//       selId.on("change", tmpChg);
+//       found = true;
+//     });
+//     return found;
+//   }
+
+//   if (!setSelect()) {
+//     selId.append("option").text(id).datum(id);
+//     setSelect();
+//   }
+
+//   if (selId) { 
+//     if (!setSelect()) {
+//         selId.append("option").text(id).datum(id);
+//         setSelect();
+//     }
+// }
+
+//   d3.select("#pStart").text(jkjs.time.pretty(person["start"]));
+//   d3.select("#pEnd").text(jkjs.time.pretty(person["end"]));
+//   return selId;
+// }
+
 function refreshInfo(pid, person) {
   headList.forEach(function(sel) {
     sel.remove();
@@ -28,10 +115,12 @@ function refreshInfo(pid, person) {
   function addItem(item) {
     var li = sel.insert("li", ":first-child");
     var div = li.append("div");
-    div.append("strong").text(item["name"] + ': ');
-    if (item["id"] === "id" && !selId)  {
+    if (item["name"]) {
+      div.append("strong").text(item["name"] + ': ');
+    }
+    if (item["id"] === "id" && !selId) {
       hasId = true;
-      selId = div.append("select");
+      //selId = div.append("select");
       id = item["value"];
     } else {
       var span = div.append("span").attr({
@@ -61,11 +150,12 @@ function refreshInfo(pid, person) {
   if (!hasId) {
     addItem({
       "id": "id",
-      "name": "File",
       "value": pid
     });
   }
 
+  // Comment out the setSelect function and its associated code
+  /*
   function setSelect() {
     if (!selId) return false; 
 
@@ -93,7 +183,8 @@ function refreshInfo(pid, person) {
         selId.append("option").text(id).datum(id);
         setSelect();
     }
-}
+  }
+  */
 
   d3.select("#pStart").text(jkjs.time.pretty(person["start"]));
   d3.select("#pEnd").text(jkjs.time.pretty(person["end"]));
@@ -103,7 +194,7 @@ function refreshInfo(pid, person) {
 function initViews(mainG, secG, suppl, blank, eventList, typeList, overview, setBox, onVC, busy, updateViewport) {
   var res = [];
   var pool = new TypePool(busy, overview, setBox, onVC, 8, 8);
-  pool.setSelections(mainG, secG); 
+  //pool.setSelections(mainG, secG); 
   
   if (d3.select("#eventSearchBar").empty()) {
     const searchBar = d3.select("#eventSearchBar");

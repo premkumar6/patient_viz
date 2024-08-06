@@ -14,13 +14,6 @@ import os.path
 
 import util
 
-__doc__ = """
-Created on Mon Oct 13 11:44:00 2014
-
-@author: joschi
-@author: razavian
-"""
-
 debugOutput = False
 
 class EntryCreator(object):

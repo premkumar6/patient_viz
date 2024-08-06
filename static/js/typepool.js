@@ -1134,7 +1134,6 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
 
         // Check if the selection rectangle overlaps with the type's vertical range
         if (sRect.y + sRect.height >= rangeY[0] && sRect.y <= rangeY[1]) {
-            // Traverse events within the type, filtering by horizontal range (time)
             type.traverseEventRange(
                 sRect.x - colW,
                 sRect.x + sRect.width,
@@ -1155,7 +1154,6 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     this.greyOutRest(true);     // Grey out events not in the selection
     this.endBulkSelection();   // End the bulk selection process, triggering updates
 };
-
   this.startBulkSelection = function() {
     inBulkSelection += 1;
   };

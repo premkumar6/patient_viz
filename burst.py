@@ -10,12 +10,6 @@ import json
 
 import util
 
-__doc__ = """
-Created on Thu Apr 23 21:56:00 2015
-
-@author: joschi
-"""
-
 input_format = {}
 
 FLUSH_THRESHOLD = 100000
