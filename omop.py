@@ -1,4 +1,6 @@
 from __future__ import print_function
+import json
+import os
 import sys
 import sqlalchemy
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -608,32 +610,32 @@ class OMOP:
 # For generating the json files
     
 # def generate_patient_files(batch_size=10):
-#     settings = {
-#         'omop_user': 'etl_viz',
-#         'omop_passwd': 'prem123',
-#         'omop_host': 'localhost',
-#         'omop_port': '5432',
-#         'omop_db': 'synthea10',
-#         'omop_schema': 'cdm_synthea10',
-#         'omop_engine': 'postgresql',
-#         'omop_use_alt_hierarchies': True,
-#         'use_cache': True,
-#         'ccs_diag': 'path/to/ccs_diag/file',
-#         'ccs_proc': 'path/to/ccs_proc/file',
-#     }
-#     # settings = {
-#     #     'omop_user': 'patien_viz_user',
-#     #     'omop_passwd': 's0382292',
-#     #     'omop_host': 'localhost',
-#     #     'omop_port': '5432',
-#     #     'omop_db': 'omop',
-#     #     'omop_schema': 'omop_schema',
-#     #     'omop_engine': 'postgresql',
-#     #     'omop_use_alt_hierarchies': True,
-#     #     'use_cache': True,
-#     #     'ccs_diag': 'path/to/ccs_diag/file',
-#     #     'ccs_proc': 'path/to/ccs_proc/file',
-#     # }
+    # settings = {
+    #     'omop_user': 'etl_viz',
+    #     'omop_passwd': 'prem123',
+    #     'omop_host': 'localhost',
+    #     'omop_port': '5432',
+    #     'omop_db': 'synthea10',
+    #     'omop_schema': 'cdm_synthea10',
+    #     'omop_engine': 'postgresql',
+    #     'omop_use_alt_hierarchies': True,
+    #     'use_cache': True,
+    #     'ccs_diag': 'path/to/ccs_diag/file',
+    #     'ccs_proc': 'path/to/ccs_proc/file',
+    # }
+    # settings = {
+    #     'omop_user': 'patien_viz_user',
+    #     'omop_passwd': 's0382292',
+    #     'omop_host': 'localhost',
+    #     'omop_port': '5432',
+    #     'omop_db': 'omop',
+    #     'omop_schema': 'omop_schema',
+    #     'omop_engine': 'postgresql',
+    #     'omop_use_alt_hierarchies': True,
+    #     'use_cache': True,
+    #     'ccs_diag': 'path/to/ccs_diag/file',
+    #     'ccs_proc': 'path/to/ccs_proc/file',
+    # }
 
 #     omop = OMOP(settings, True)
 #     patients = set()

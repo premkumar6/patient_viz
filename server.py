@@ -1,5 +1,4 @@
-# Added cache to the server side. 1
-
+# Added cache to the server side. 
 from flask import Flask, jsonify, request, send_from_directory, render_template
 import os
 import json
