@@ -1,21 +1,21 @@
-# Added cache to the server side. 
+# server.py
 from flask import Flask, jsonify, request, send_from_directory, render_template
 import os
 import json
 import logging
-from omop import OMOP #importing the omop module 
+from omop import OMOP # Importing the OMOP module
 from flask_caching import Cache
 
 app = Flask(__name__, static_folder='static')
 
-# Configure cache to use simple in-meomory caching
+# Configure cache to use simple in-memory caching
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load settings from env variables 
+# Load settings from environment variables
 settings = {
     'omop_user': os.getenv('OMOP_USER', 'etl_viz'),
     'omop_passwd': os.getenv('OMOP_PASSWD', 'prem123'),
@@ -29,8 +29,7 @@ settings = {
     'ccs_diag': os.getenv('CCS_DIAG', 'path/to/ccs_diag/file'),
     'ccs_proc': os.getenv('CCS_PROC', 'path/to/ccs_proc/file'),
 }
-
-# Intialise omop instance with settings
+# Initialize OMOP instance with settings
 omop = OMOP(settings, True)
 
 # Route to render the main index page
@@ -64,7 +63,13 @@ def get_json_file(filename):
             # If the file doesn't exist, generate it
             logger.info(f"File {file_path} does not exist. Generating new file.")
             person_source_value = filename.replace('.json', '')
-            patient_data = omop.get_patient(person_source_value, {}, None, None)
+            dictionary = load_or_create_dictionary()
+            patient_data = omop.get_patient(person_source_value, dictionary, None, None)
+            
+            # Save the dictionary if it's updated
+            dictionary_path = 'json/dictionary.json'
+            with open(dictionary_path, 'w') as f:
+                json.dump(dictionary, f)
             
             # Ensure the 'json' directory exists
             if not os.path.exists('json'):
@@ -132,24 +137,44 @@ def get_patient_data():
         person_id = person_id[5:-5]
 
     try:
-        # Load existing dictionary
-        dictionary_path = 'json/dictionary.json'
-        if os.path.exists(dictionary_path):
-            with open(dictionary_path, 'r') as f:
-                dictionary = json.load(f)
-        else:
-            dictionary = {}
+        # Load or create the dictionary with hierarchies
+        dictionary = load_or_create_dictionary()
 
         # Fetch patient data
         patient_data = omop.get_patient(person_id, dictionary, None, None)
+        
+        # Save the updated dictionary
+        dictionary_path = 'json/dictionary.json'
+        with open(dictionary_path, 'w') as f:
+            json.dump(dictionary, f)
+        
         return jsonify(patient_data)
     
     except Exception as e:
         logger.error(f"Error fetching patient data: {e}")
         return jsonify({"error": f"Failed to fetch patient data: {str(e)}"}), 500
 
+def load_or_create_dictionary():
+    """
+    Load the existing dictionary.json file or create a new one with hierarchies.
+    """
+    dictionary_path = 'json/dictionary.json'
+    if os.path.exists(dictionary_path):
+        with open(dictionary_path, 'r') as file:
+            dictionary = json.load(file)
+    else:
+        # Create a new dictionary with hierarchies
+        dictionary = {}
+        new_dict_entries = set()
+        omop.update_hierarchies(dictionary, new_dict_entries)
+    
+    return dictionary
+
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1', port=8080)
+
+
+
 
 
 
