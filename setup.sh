@@ -1,7 +1,3 @@
-#!/usr/bin/env bash
-# @author Joschi <josua.krause@gmail.com>
-# created 2015-02-16 09:00
-
 PNT_DIR="code/pnt"
 NDC_DIR="code/ndc"
 ICD9_DIR="code/icd9"

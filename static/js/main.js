@@ -341,6 +341,7 @@ function start() {
             busy.setState(jkjs.busy.state.warn, "Failed loading file: '" + pid + "'. Error: " + err.statusText);
             return;
         }
+
         d3.json(dictionaryFile, function(err_dict, json_dictionary) {
             if (err_dict) {
                 console.error("Failed loading dictionary:", dictionaryFile, err_dict);

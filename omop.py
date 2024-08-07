@@ -1,3 +1,4 @@
+# Importing necessary libraries
 from __future__ import print_function
 import json
 import os
@@ -6,11 +7,13 @@ import sqlalchemy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
 
+# Mapping for gender labels to CSS classes for styling 
 gender_label = {
     "M": "primary",
     "W": "danger",
     "F": "danger"
 }
+# Mapping for gender codes to unified values 
 gender_map = {
     "M": "M",
     "W": "F",
@@ -18,7 +21,7 @@ gender_map = {
     "MALE":"M",
     "FEMALE":"F"
 }
-
+# Color mapping for different medical events
 color_map = {
     "Condition": "#4daf4a",
     "Drug": "#eb9adb",
@@ -26,6 +29,7 @@ color_map = {
     "Observation": "#ccffff",
     "Procedure": "#ff7f00"
 }
+# Mapping for measurement flags to specific colors
 measure_flag_map = {
     "L": {
         "color": "#fb8072"
@@ -35,10 +39,17 @@ measure_flag_map = {
     }
 }
 
+# Importing custom utilities 
 import util
 
 class OMOP:
     def __init__(self, settings, debug_output):
+        """
+        Intialise the OMOP class with database connection settings and optional debug output.
+
+        :param settings: Dictionary containing database connection and other configuration settings
+        :param debug_output: Boolean indicating whether debug output is enabled
+        """
         username = settings['omop_user']
         password = settings['omop_passwd']
         host = settings['omop_host']
@@ -59,6 +70,13 @@ class OMOP:
                 self._parents['Procedure_ICD9CM'] = util.read_CCS(util.get_file(settings['ccs_proc'], debug_output), self._codes['Procedure_ICD9CM'])
 
     def _exec(self, query, **args):
+        """
+        Execute a SQL query and return the result
+
+        :param query: The SQL query to be executed
+        :param **args: Arguments to bind to the query.
+        :return: Returns the result of the SQL query
+        """
         connection = None
         try:
             connection = self.db.connect()
@@ -71,6 +89,13 @@ class OMOP:
                 connection.close()
 
     def _exec_one(self, query, **args):
+        """
+        Execute a SQL query expecting one result row. Raises an error if no rows or multiple rows are returned
+
+        :param query: The SQL query to execute.
+        :param args: Arguments to bind to the query.
+        :return: The single result row.
+        """
         result = self._exec(query, **args)
         res = result.first()
         if res is None:
@@ -78,6 +103,14 @@ class OMOP:
         return res
     
     def list_patients(self, patients, prefix="", limit=None, show_old_ids=False):
+        """
+        List the patients from the database
+
+        :param patients: Set to add the patient IDs to.
+        :param prefix: Optional prefix to prepend to each patient ID.
+        :param limit: Optional limit on the number of patients to list.
+        :param show_old_ids: Boolean to indicate whether to show old IDs.
+        """
         limit_str = " LIMIT :limit" if limit is not None else ""
         query = f"SELECT person_id, person_source_value FROM {self.schema}.person{limit_str}"
         params = {}
@@ -87,10 +120,26 @@ class OMOP:
             patients.add(str(prefix) + (str(r['person_id']) if not show_old_ids else str(r['person_source_value']) + '.json'))
 
     def get_person_id(self, pid):
+        """
+        Retrieve the person_id for a given person_source_value.
+
+        :param pid: The person_source_value.
+        :return: The corresponding person_id.
+        """
         query = "SELECT person_id FROM {schema}.person WHERE person_source_value = :pid"
         return str(self._exec_one(query, pid=pid)['person_id'])
 
     def add_info(self, obj, id, key, value, has_label = False, label = ""):
+        """
+        Add information to an object's 'info' array, avoiding duplicates.
+
+        :param obj: The object to add information to.
+        :param id: The ID for the information.
+        :param key: The key/name of the information.
+        :param value: The value of the information.
+        :param has_label: Boolean indicating whether the information has a label.
+        :param label: The label for the information, if applicable.
+        """
         for info in obj["info"]:
             if info["id"] == id:
                 if str(value) != str(info["value"]):
@@ -106,6 +155,12 @@ class OMOP:
         obj["info"].append(node)
 
     def get_info(self, pid, obj):
+        """
+        Retrieve demographic information for a patient and add it to the provided object.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add information to.
+        """
         query = """SELECT
              concept_name as gender_concept_name,
              person_source_value,
@@ -126,9 +181,26 @@ class OMOP:
         self.add_info(obj, 'gender', 'Gender', gender_map.get(gender.upper(), 'U'), True, gender_label.get(gender, 'U'))
 
     def to_time(self, value):
+        """
+        Convert a date value to a standard time format.
+
+        :param value: The date value to convert.
+        :return: The converted time value.
+        """
         return util.toTime(value.strftime("%Y%m%d"))
 
     def create_event(self, group, id, claim_id, has_result=False, result_flag="", result=""):
+        """
+        Create an event object.
+
+        :param group: The type of the event.
+        :param id: The ID of the event.
+        :param claim_id: The claim ID associated with the event.
+        :param has_result: Boolean indicating whether the event has a result.
+        :param result_flag: The flag for the result, if applicable.
+        :param result: The result value, if applicable.
+        :return: The created event object.
+        """
         res = {
             "id": id,
             "group": group
@@ -140,6 +212,19 @@ class OMOP:
             res["flag"] = result_flag
         return res
     def add_dict(self, dict, new_dict_entries, group, prefix, id, name, desc, code, unmapped):
+        """
+        Add an entry to the dictionary with hierarchy information and update new entries.
+
+        :param dict: The dictionary to add the entry to.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        :param group: The type of the entry.
+        :param prefix: The prefix for the entry ID.
+        :param id: The ID of the entry.
+        :param name: The name of the entry.
+        :param desc: The description of the entry.
+        :param code: The code for the entry.
+        :param unmapped: Boolean indicating whether the entry is unmapped.
+        """
         alt_hierarchies = str(group) + '_' + str(prefix)
         if group not in dict:
             dict[group] = {}
@@ -197,12 +282,27 @@ class OMOP:
                 new_dict_entries.add(str(id))
 
     def get_dict_entry(self, dict, group, prefix, id):
+        """
+        Retrieve a dictionary entry based on the group, prefix, and ID.
+
+        :param dict: The dictionary to search.
+        :param group: The type of the entry.
+        :param prefix: The prefix for the entry ID.
+        :param id: The ID of the entry.
+        :return: The dictionary entry if found, otherwise None.
+        """
         if group not in dict:
             return None
         full_id = str(prefix) + str(id)
         return dict[group].get(full_id, None)
 
     def update_hierarchies(self, dict, new_dict_entries):
+        """
+        Update the hierarchies in the dictionary based on new entries.
+
+        :param dict: The dictionary to update.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         while new_dict_entries:
             query = """SELECT
                  c.concept_id as c_id,
@@ -250,9 +350,17 @@ class OMOP:
                     if desc_entry is not None and parent_id != desc_id and ('dos' not in desc_entry or desc_entry['dos'] > dos):
                         desc_entry['dos'] = dos
                         desc_entry['parent'] = str(parent_vocab) + str(parent_id)
-            new_dict_entries.clear() # we covered everything already (because the table is the full matrix)
+            new_dict_entries.clear()
 
     def get_diagnoses(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve diagnoses for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.condition_occurrence_id as id_row,
             o.condition_start_date as date_start,
@@ -294,6 +402,14 @@ class OMOP:
                 date_cur = util.nextDay(date_cur)
 
     def get_procedures(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve procedures for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.procedure_occurrence_id as id_row,
             o.procedure_date as p_date,
@@ -331,6 +447,14 @@ class OMOP:
             obj['events'].append(event)
 
     def get_observations_concept_valued(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve concept-valued observations for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.observation_id as id_row,
             o.observation_date as o_date,
@@ -372,6 +496,14 @@ class OMOP:
             obj['events'].append(event)
 
     def get_observations_string_valued(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve string-valued observations for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.observation_id as id_row,
             o.observation_date as o_date,
@@ -409,6 +541,14 @@ class OMOP:
             obj['events'].append(event)
 
     def get_observations_number_valued(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve number-valued observations for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.observation_id as id_row,
             o.observation_date as o_date,
@@ -446,6 +586,14 @@ class OMOP:
             obj['events'].append(event)
 
     def get_drugs(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve drug exposures for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.drug_exposure_id as id_row,
             o.drug_exposure_start_date as date_start,
@@ -491,6 +639,14 @@ class OMOP:
                 date_cur = util.nextDay(date_cur)
 
     def get_measurements(self, pid, obj, dict, new_dict_entries):
+        """
+        Retrieve measurements for a patient and add them to the object and dictionary.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        :param dict: The dictionary to update with new entries.
+        :param new_dict_entries: Set of new dictionary entries to be updated.
+        """
         query = """SELECT
             o.measurement_id as id_row,
             o.measurement_date as m_date,
@@ -550,6 +706,13 @@ class OMOP:
             obj['events'].append(event)
 
     def get_visits(self, pid, obj):
+        """
+        Retrieve visits for a patient and add them to the provided object.
+
+        :param pid: The person_id of the patient.
+        :param obj: The object to add events to.
+        """
+
         classes = obj["classes"]
         if not classes:
             return
@@ -571,6 +734,15 @@ class OMOP:
             v_spans.append({"class": visit_name, "from": self.format_time(date_start_dt), "to": self.format_time(date_end_dt)})
 
     def get_patient(self, pid, dictionary, line_file, class_file):
+        """
+        Retrieve all relevant data for a patient and compile it into an object.
+
+        :param pid: The person_id of the patient.
+        :param dictionary: The dictionary to update with new entries.
+        :param line_file: Optional line file for additional data.
+        :param class_file: Optional class file for additional data.
+        :return: The compiled patient data object.
+        """
         obj = {
             "info": [],
             "events": [],
@@ -608,8 +780,14 @@ class OMOP:
     
 
 # For generating the json files
+# Uncomment and adjust the following functions if needed to generate patient files
     
 # def generate_patient_files(batch_size=10):
+#     """
+#     Generate JSON files for patients in batches.
+    
+#     :param batch_size: Number of patients to process in each batch.
+#     """
     # settings = {
     #     'omop_user': 'etl_viz',
     #     'omop_passwd': 'prem123',
@@ -623,19 +801,19 @@ class OMOP:
     #     'ccs_diag': 'path/to/ccs_diag/file',
     #     'ccs_proc': 'path/to/ccs_proc/file',
     # }
-    # settings = {
-    #     'omop_user': 'patien_viz_user',
-    #     'omop_passwd': 's0382292',
-    #     'omop_host': 'localhost',
-    #     'omop_port': '5432',
-    #     'omop_db': 'omop',
-    #     'omop_schema': 'omop_schema',
-    #     'omop_engine': 'postgresql',
-    #     'omop_use_alt_hierarchies': True,
-    #     'use_cache': True,
-    #     'ccs_diag': 'path/to/ccs_diag/file',
-    #     'ccs_proc': 'path/to/ccs_proc/file',
-    # }
+#     settings = {
+#         'omop_user': 'patien_viz_user',
+#         'omop_passwd': 's0382292',
+#         'omop_host': 'localhost',
+#         'omop_port': '5432',
+#         'omop_db': 'omop',
+#         'omop_schema': 'omop_schema',
+#         'omop_engine': 'postgresql',
+#         'omop_use_alt_hierarchies': True,
+#         'use_cache': True,
+#         'ccs_diag': 'path/to/ccs_diag/file',
+#         'ccs_proc': 'path/to/ccs_proc/file',
+#         }
 
 #     omop = OMOP(settings, True)
 #     patients = set()
@@ -684,6 +862,11 @@ class OMOP:
 #         json.dump(dictionary, df)
 
 # def save_patients(patients):
+#     """
+#     Save the list of patients to a file.
+
+#     :param patients: Set of patient IDs.
+#     """
 #     with open('patients.txt', 'w') as pf:
 #         pf.write('\n'.join(sorted(list(patients))))
 #         pf.flush()
