@@ -32,6 +32,9 @@ settings = {
 # Initialize OMOP instance with settings
 omop = OMOP(settings, True)
 
+if not os.path.exists('json'):
+    os.makedirs('json')
+
 # Route to render the main index page
 @app.route('/')
 def index():
