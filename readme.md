@@ -26,7 +26,7 @@ In order to do so you can use the following commands (assuming a fresh clone
 of the repository):
 
 ```bash
-git clone 
+git clone https://code.stanfordmed.org/data-science/patient-viz.git 
 cd patient_viz
 ```
 

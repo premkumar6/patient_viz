@@ -157,10 +157,8 @@ def get_patient_data():
         logger.error(f"Error fetching patient data: {e}")
         return jsonify({"error": f"Failed to fetch patient data: {str(e)}"}), 500
 
+# Load the existing dictionary.json file or create a new one with hierarchies.
 def load_or_create_dictionary():
-    """
-    Load the existing dictionary.json file or create a new one with hierarchies.
-    """
     dictionary_path = 'json/dictionary.json'
     if os.path.exists(dictionary_path):
         with open(dictionary_path, 'r') as file:
