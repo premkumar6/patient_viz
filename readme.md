@@ -47,8 +47,8 @@ OMOP_USER=your_db_user
 OMOP_PASSWD=your_db_password
 OMOP_HOST=localhost
 OMOP_PORT=5432
-OMOP_DB=synthea10
-OMOP_SCHEMA=cdm_synthea10
+OMOP_DB=your_database
+OMOP_SCHEMA=your_schema
 OMOP_ENGINE=postgresql
 CCS_DIAG=path/to/ccs_diag/file
 CCS_PROC=path/to/ccs_proc/file
@@ -59,6 +59,8 @@ After successfully configuring the connection you can run
 ```bash
 python server.py
 ```
+you can find javascript files in the static folder and index.html in the templates folder. 
+
  The `dictionary.json` file contains the mappings for readable code names; if those mappings change the file needs to be removed when using caching.
 
 If you want to stop the server you can type `quit` into its console

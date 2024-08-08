@@ -1,11 +1,12 @@
 // main.js - dynamic patient id creation
 
-var SLOW_MODE = false;
-var DEBUG_V_SEGMENTS = false;
-var SHOW_EVENT_GROUPS = false;
-var busy = null;
+var SLOW_MODE = false; // Flag to control slow mode behavior
+var DEBUG_V_SEGMENTS = false; // Flag to control debug view segments
+var SHOW_EVENT_GROUPS = false; // Flag to show event groups
+var busy = null;  // Variable to manage busy state
 
 function start() {
+  // Configure busy images
   jkjs.busy.imgBusy = "static/lib/jk-js/jkjs/img/busy.gif";
   jkjs.busy.imgWarn = "static/lib/jk-js/jkjs/img/warning.png";
   jkjs.text.exact(!SLOW_MODE);
@@ -67,7 +68,7 @@ function start() {
   //   });
   // }
 
-  var showLabelsOnDrag = !SLOW_MODE;
+  var showLabelsOnDrag = !SLOW_MODE; // Control label visibility on drag based on slow mode
   var topPad = 71; // bootstraps navbar
   var divContent = d3.select("#pContent").style({
     "display": "inline-block",
@@ -366,7 +367,7 @@ function start() {
         });
     });
 }
-
+  // Handle browser back/forward navigation
   window.onpopstate = function(e) {
     if (e.state) {
       loadFile(e.state.pid, e.state.dictionary, false);
