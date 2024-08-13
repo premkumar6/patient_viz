@@ -1,9 +1,0 @@
-[submodule "lib/jk-js"]
-	path = lib/jk-js
-	url = https://github.com/JosuaKrause/jk-js.git
-[submodule "lib/mdsjs"]
-	path = lib/mdsjs
-	url = https://github.com/JosuaKrause/mdsjs.git
-[submodule "lib/quick_server"]
-	path = lib/quick_server
-	url = https://github.com/JosuaKrause/quick_server.git
