@@ -1,8 +1,9 @@
 var headList = [];
 var headPrefix = "pHeadList_"
+// var currentPage = 1;
+// var hasMoreEvents = true;
 
 const searchBar = d3.select("#eventSearchBar");
-
 searchBar.on("input", function() {
   const searchTerm = this.value.toLowerCase();
   pool.traverseEvents(function(gid, tid, e) {
@@ -67,38 +68,6 @@ function refreshInfo(pid, person) {
     });
   }
 
-  // Comment out the setSelect function and its associated code
-  /*
-  function setSelect() {
-    if (!selId) return false; 
-
-    var found = false;
-    selId.selectAll("option").each(function(p, i) {
-      if (p !== id) {
-        return;
-      }
-      var tmpChg = selId.on("change");
-      selId.on("change", null);
-      selId.node().selectedIndex = i;
-      selId.on("change", tmpChg);
-      found = true;
-    });
-    return found;
-  }
-
-  if (!setSelect()) {
-    selId.append("option").text(id).datum(id);
-    setSelect();
-  }
-
-  if (selId) { 
-    if (!setSelect()) {
-        selId.append("option").text(id).datum(id);
-        setSelect();
-    }
-  }
-  */
-
   d3.select("#pStart").text(jkjs.time.pretty(person["start"]));
   d3.select("#pEnd").text(jkjs.time.pretty(person["end"]));
   return selId;
@@ -109,6 +78,7 @@ function initViews(mainG, secG, suppl, blank, eventList, typeList, overview, set
   var pool = new TypePool(busy, overview, setBox, onVC, 8, 8);
   //pool.setSelections(mainG, secG); 
   
+  // Event Search Bar
   if (d3.select("#eventSearchBar").empty()) {
     const searchBar = d3.select("#eventSearchBar");
 
@@ -168,10 +138,15 @@ function setupModes(pool) {
 }
 
 function loadPerson(pid, person, pool, eventView, typeView, linechart, histogram, dictionary, suppl) {
+  // if (currentPage ==1) {
   var selId = refreshInfo(("" + pid).trim(), person);
   pool.clearEvents();
-  pool.readEvents(person, dictionary);
+  pool.setTimeRange(person.start, person.end);
   linechart.values("total" in person ? person["total"] : []);
+  // setupBars(pool,person)
+  // }
+  pool.readEvents(person, dictionary);
+
   if(!linechart.hasContent()) { // FIXME make possible for both to show at the same time
     var claims = {};
     var claimToTime = {};
@@ -226,6 +201,14 @@ function loadPerson(pid, person, pool, eventView, typeView, linechart, histogram
   setupBars(pool, person);
   setupYCluster(pool, d3.select("#pYCluster"), typeView);
   pool.updateLook();
+  // if (person.pagination) {
+  //   currentPage = person.pagination.page;
+  //   hasMoreEvents = currentPage < person.pagination.total_pages;
+  // } else {
+  //   hasMoreEvents = false;
+  // }
+  
+  //updateLoadMoreButtonVisibility();
   return selId;
 }
 
@@ -743,5 +726,3 @@ function setupYCluster(pool, sel, typeView) {
   sel.on("change", updateYCompress);
   updateYCompress();
 }
-
-

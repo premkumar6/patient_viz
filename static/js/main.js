@@ -1,72 +1,31 @@
-// main.js - dynamic patient id creation
+// Removed pagination and encrypted the data
 
+let isLoading = false;
 var SLOW_MODE = false; // Flag to control slow mode behavior
 var DEBUG_V_SEGMENTS = false; // Flag to control debug view segments
 var SHOW_EVENT_GROUPS = false; // Flag to show event groups
 var busy = null;  // Variable to manage busy state
+
+
+const ENCRYPTION_KEY = CryptoJS.enc.Utf8.parse('ThisIsA16ByteKey');
+const IV = CryptoJS.enc.Utf8.parse('ThisIsA16ByteIV!');
+
+function decryptData(encryptedData) {
+    const ciphertext = CryptoJS.enc.Base64.parse(encryptedData);
+    const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: ciphertext },
+        ENCRYPTION_KEY,
+        { iv: IV, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+    );
+    return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
+}
+
 
 function start() {
   // Configure busy images
   jkjs.busy.imgBusy = "static/lib/jk-js/jkjs/img/busy.gif";
   jkjs.busy.imgWarn = "static/lib/jk-js/jkjs/img/warning.png";
   jkjs.text.exact(!SLOW_MODE);
-
-  // function setPidSel(ps) {
-  //   var curId;
-  //   if (ps) {
-  //     ps.on("change", function() {
-  //       var pn = ps.node();
-  //       var op = d3.select(pn.options[pn.selectedIndex]).datum();
-  //       loadFile(op, lastDictionaryFile, true);
-  //     });
-  //     var dd = ps.node();
-  //     curId = d3.select(dd.options[dd.selectedIndex]).text();
-  //   } else {
-  //     curId = 0;
-  //   }
-  //   d3.text("patients.txt", "text/plain", function(error, data) {
-  //     if (error) {
-  //       console.error("Error loading patients.txt:", error);
-  //       busy.setState(jkjs.busy.state.warn, "Error loading file list. Error: " + error.statusText);
-  //       return;
-  //     }
-
-  //     var pids = data.split("\n").map(function(pid) {
-  //       return ("" + pid).trim();
-  //     }).filter(function(pid) {
-  //       return pid != "";
-  //     });
-  //     if (ps) {
-  //       var pidOpts = ps.selectAll("option").data(pids);
-  //       pidOpts.exit().remove();
-  //       pidOpts.enter().append("option");
-  //       pidOpts.text(function(pid) {
-  //         return pid;
-  //       });
-  //       pidOpts.sort();
-
-  //       ps.selectAll("option").each(function(p, i) {
-  //         if (p !== curId) {
-  //           return;
-  //         }
-  //         var tmpChg = ps.on("change");
-  //         ps.on("change", null);
-  //         ps.node().selectedIndex = i;
-  //         ps.on("change", tmpChg);
-  //       });
-  //     } else {
-  //       if (pids.length > 2 && pids[2] === "json/998093F33FE2D940.json") {
-  //         curId = 2;
-  //       }
-  //       if (curId < pids.length) {
-  //         loadFile(pids[curId], lastDictionaryFile || dictionaryDefault, true);
-  //       } else {
-  //         console.warn("no patients found!");
-  //         busy.setState(jkjs.busy.state.warn, "No file list found.");
-  //       }
-  //     }
-  //   });
-  // }
 
   var showLabelsOnDrag = !SLOW_MODE; // Control label visibility on drag based on slow mode
   var topPad = 71; // bootstraps navbar
@@ -238,6 +197,7 @@ function start() {
   linechart = views[3];
   histogram = views[4];
   labels = views[5];
+
   d3.select("#pVSel").on("change", function() {
     pool.verticalSelection(d3.select("#pVSel").node().checked);
   });
@@ -270,102 +230,62 @@ function start() {
   var dictionary = null;
   var lastDictionaryFile = null;
 
-  // function loadFile(pid, dictionaryFile, createState) {
-  //   if (createState) {
-  //     var url = jkjs.util.getOwnURL() + "?p=" + encodeURIComponent(pid) + "&d=" + encodeURIComponent(dictionaryFile);
-  //     window.history.pushState({
-  //       pid: pid,
-  //       dictionary: dictionaryFile
-  //     }, "", url);
-  //   }
-  //   var inputFile = pid;
-  //   console.log("Loading patient file from:", inputFile);
-  //   busy.setState(jkjs.busy.state.busy);
-  //   overview.clearShadow();
-  //   typeList.clearLists();
-  //   eventList.setEvents([], false, false);
-  //   d3.json(inputFile, function(err, json_patient) {
-  //     if (err) {
-  //       console.error("Failed loading patient:", inputFile, err);
-  //       busy.setState(jkjs.busy.state.warn, "Failed loading file: '" + inputFile + "'. Error: " + err.statusText);
-  //       return;
-  //     }
-  //     d3.json(dictionaryFile, function(err_dict, json_dictionary) {
-  //       if (err_dict) {
-  //         console.error("Failed loading dictionary:", dictionaryFile, err_dict);
-  //         busy.setState(jkjs.busy.state.warn, "Invalid dictionary file. Error: " + err_dict.statusText);
-  //         return;
-  //       }
-  //       dictionary = json_dictionary;
-  //       lastDictionaryFile = dictionaryFile;
-  //       var error = true;
-  //       try {
-  //         setPidSel(loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, dictionary, suppl));
-  //         busy.setState(jkjs.busy.state.norm);
-  //         relayout();
-  //         zui.showAll(false);
-  //         error = false;
-  //       } finally {
-  //         if (error) {
-  //           busy.setState(jkjs.busy.state.warn, "Error while loading file.");
-  //         }
-  //       }
-  //     });
-  //   });
-  // }
+// Dynamic Patient ID Creation
 
-  // dynamic patient id creation
-  function loadFile(pid, dictionaryFile, createState) {
-    if (createState) {
-        var url = jkjs.util.getOwnURL() + "?p=" + encodeURIComponent(pid) + "&d=" + encodeURIComponent(dictionaryFile);
-        window.history.pushState({
-            pid: pid,
-            dictionary: dictionaryFile
-        }, "", url);
-    }
-    console.log("Loading patient file from:", pid);
-    busy.setState(jkjs.busy.state.busy);
-    overview.clearShadow();
-    typeList.clearLists();
-    eventList.setEvents([], false, false);
+async function loadFile(pid, dictionaryFile, createState) {
+  if (createState) {
+      var url = jkjs.util.getOwnURL() + "?p=" + encodeURIComponent(pid) + "&d=" + encodeURIComponent(dictionaryFile);
+      window.history.pushState({
+          pid: pid,
+          dictionary: dictionaryFile
+      }, "", url);
+  }
+  console.log("Loading patient file from:", pid);
+  busy.setState(jkjs.busy.state.busy);
 
-    // Extract person_id if it's a filename
-    var personId = pid;
-    if (pid.startsWith('json/') && pid.endsWith('.json')) {
-        personId = pid.substring(5, pid.length - 5);
-    }
+  overview.clearShadow();
+  typeList.clearLists();
+  eventList.setEvents([], false, false);
+  pool.clearEvents();
+  currentPatientId = pid;
 
-    // Use the new endpoint to get patient data
-    d3.json("/get_patient_data?id=" + encodeURIComponent(personId), function(err, json_patient) {
-        if (err) {
-            console.error("Failed loading patient:", pid, err);
-            busy.setState(jkjs.busy.state.warn, "Failed loading file: '" + pid + "'. Error: " + err.statusText);
-            return;
-        }
+  var personId = pid;
+  if (pid.startsWith('json/') && pid.endsWith('.json')) {
+      personId = pid.substring(5, pid.length - 5);
+  }
 
-        d3.json(dictionaryFile, function(err_dict, json_dictionary) {
-            if (err_dict) {
-                console.error("Failed loading dictionary:", dictionaryFile, err_dict);
-                busy.setState(jkjs.busy.state.warn, "Invalid dictionary file. Error: " + err_dict.statusText);
-                return;
-            }
-            dictionary = json_dictionary;
-            lastDictionaryFile = dictionaryFile;
-            var error = true;
-            try {
-                // setPidSel(loadPerson(personId, json_patient, pool, eventList, typeList, linechart, histogram, dictionary, suppl));
-                loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, dictionary, suppl);
-                busy.setState(jkjs.busy.state.norm);
-                relayout();
-                zui.showAll(false);
-                error = false;
-            } finally {
-                if (error) {
-                    busy.setState(jkjs.busy.state.warn, "Error while loading file.");
-                }
-            }
-        });
-    });
+  try {
+      const response = await fetch(`/get_patient_data?id=${encodeURIComponent(personId)}`);
+      const data = await response.json();
+      
+      if (data.error) {
+          throw new Error(data.error);
+      }
+      
+      const json_patient = decryptData(data.encrypted_data);
+
+      console.log("Received patient data:", json_patient);
+      if (json_patient.start === undefined || json_patient.end === undefined) {
+          console.error("Missing start or end time in patient data");
+          busy.setState(jkjs.busy.state.warn, "Missing start or end time in patient data");
+          return;
+      }
+
+      const response_dict = await fetch(dictionaryFile);
+      const json_dictionary = await response_dict.json();
+
+      loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, json_dictionary, suppl);
+
+      busy.setState(jkjs.busy.state.norm);
+      relayout();
+      zui.showAll(false);
+
+      var loadingIndicator = document.getElementById('loadingIndicator');
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+  } catch (error) {
+      console.error("Error loading patient data:", error);
+      busy.setState(jkjs.busy.state.warn, "Error while loading file: " + error.message);
+  }
 }
   // Handle browser back/forward navigation
   window.onpopstate = function(e) {
@@ -440,25 +360,7 @@ function start() {
       alert("Please enter a valid Patient ID.");
     }
   });
-
-  // document.getElementById("selectFileBtn").addEventListener("click", function() {
-  //   var patientId = document.getElementById("patientIdInput").value.trim();
-  //   if (patientId) {
-  //       selectFileByPatientId(patientId);
-  //   } else {
-  //       alert("Please enter a valid Patient ID.");
-  //   }
-  // });
 }
-
-
-
-
-
-
-  
-
-
 
 
 

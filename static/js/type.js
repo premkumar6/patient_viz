@@ -558,4 +558,4 @@ Type.typeDesc = function(group, id, asId, dictionary, full) {
   } else {
     return (full ? group + " " : "") + rid
   }
-};
+}; //type.js

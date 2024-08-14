@@ -3,6 +3,7 @@ from __future__ import print_function
 import json
 import os
 import sys
+from venv import logger
 import sqlalchemy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
@@ -732,7 +733,7 @@ class OMOP:
                 continue
             
             v_spans.append({"class": visit_name, "from": self.format_time(date_start_dt), "to": self.format_time(date_end_dt)})
-
+    
     def get_patient(self, pid, dictionary, line_file, class_file):
         """
         Retrieve all relevant data for a patient and compile it into an object.
@@ -755,7 +756,6 @@ class OMOP:
         util.add_files(obj, line_file, class_file)
         self.get_info(pid, obj)
         self.add_info(obj, "pid", "Patient", pid)
-        self.get_info(pid, obj)
         self.get_diagnoses(pid, obj, dictionary, new_dict_entries)
         self.get_observations_concept_valued(pid, obj, dictionary, new_dict_entries)
         self.get_observations_string_valued(pid, obj, dictionary, new_dict_entries)
@@ -772,8 +772,9 @@ class OMOP:
                 min_time = time
             if time > max_time:
                 max_time = time
-        obj["start"] = min_time
-        obj["end"] = max_time
+        obj["start"] = min_time if min_time != float('inf') else 0
+        obj["end"] = max_time if max_time != float('-inf') else 0
+        logger.debug(f"Patient {pid} time range: {obj['start']} - {obj['end']}")
         self.add_info(obj, "event_count", "Events", len(obj["events"]))
         self.update_hierarchies(dictionary, new_dict_entries)
         return obj

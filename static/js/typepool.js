@@ -1114,6 +1114,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   };
 
   var inBulkSelection = 0;
+  
   TypePool.prototype.selectInRect = function(sRect, done) {
     if (!done) return; // Don't update if selection isn't finalized yet
 
@@ -1336,3 +1337,11 @@ TypePool.HIGHLIGHT_NONE = 0;
 TypePool.HIGHLIGHT_HOR = 1;
 TypePool.HIGHLIGHT_VER = 2;
 TypePool.HIGHLIGHT_BOTH = TypePool.HIGHLIGHT_HOR | TypePool.HIGHLIGHT_VER;
+
+TypePool.prototype.setTimeRange = function(start, end) {
+  this.startTime = start;
+  this.endTime = end;
+  console.log("Time range set to:", this.startTime, this.endTime);
+  // You might want to trigger some updates here
+  this.updateLook();
+};

@@ -15,18 +15,21 @@
   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/util.js') }}"></script>
   <script src="{{ url_for('static', filename='lib/jk-js/jkjs/zui.js') }}"></script>
   <script src="{{ url_for('static', filename='lib/colorbrewer/colorbrewer.js') }}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script src="{{ url_for('static', filename='js/type.js') }}"></script>
   <script src="{{ url_for('static', filename='js/event.js') }}"></script>
   <script src="{{ url_for('static', filename='js/overview.js') }}"></script>
   <script src="{{ url_for('static', filename='js/linechart.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/typeview.js') }}"></script>
   <script src="{{ url_for('static', filename='js/eventview.js') }}"></script>
   <script src="{{ url_for('static', filename='js/typepool.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/typeview.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/shared.js') }}" charset="utf-8"></script>
   <script src="{{ url_for('static', filename='js/labels.js') }}"></script>
   <script src="{{ url_for('static', filename='js/cluster.js') }}"></script>
   <script src="{{ url_for('static', filename='js/histogram.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/shared.js') }}" charset="utf-8"></script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <!-- <script disable-devtool-auto src='https://cdn.jsdelivr.net/npm/disable-devtool'></script> -->
+
   <style>
     body {
       font-family: 'Arial', sans-serif;
@@ -182,6 +185,7 @@
   <div class="container">
         <input type="text" id="patientIdInput" class="custom-input" placeholder="Enter Patient ID" />
         <button id="selectFileBtn" class="custom-button">Extract Patient File</button>
+        <!-- <button id="loadMoreButton" style="margin-left: 20px; padding: 5px 10px;">Load More</button> -->
       </div>
     </div>
     <ul class="list-inline" id="pHeadList">
@@ -243,6 +247,11 @@
 <div class="footer">
   <p>Designed and developed by the TDS Data Science team</p>
 </div>
+<!-- <script>
+  disableDevtool({
+  url: 'www.google.com'
+        });
+</script> -->
 
 <script>
   function showContent() {
@@ -254,5 +263,3 @@
 </script>
 </body>
 </html> 
-  
-
