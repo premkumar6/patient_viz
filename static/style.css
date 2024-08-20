@@ -112,6 +112,12 @@
     padding: 3px 5px;           
     border-radius: 3px;         
   }
+
+  #pTypesLeft {
+    min-width: 265px;
+    min-height: 300px;
+    display: block !important;
+  }
   
   
 

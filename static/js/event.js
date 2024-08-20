@@ -1,28 +1,36 @@
+// Event class constructor function
 function Event(e, pool, dictionary) {
   var that = this;
+  // Generate a unique ID for each event using a static method.
   var id = Event.nextId();
+  // Parse the event time as an integer from the input data.
   var time = parseInt(e["time"]);
   // e["weight"] = Math.max(Math.floor(Math.random() * 100 - 40) / 10 - 0.5, 0);
+  // weights assigned to events
   var specialInfo = !e["weight"] ? null : {
-    weight: Math.abs(e["weight"]),
-    radius: 4 + 160 * Math.abs(e["weight"]),
-    isneg: e["weight"] > 0
+    weight: Math.abs(e["weight"]), // the absolute value of the weight
+    radius: 4 + 160 * Math.abs(e["weight"]), // The radius size for the event based on its weight.
+    isneg: e["weight"] > 0 // Indicates if the weight is positive.
   };
+  // If the event has weight
   if(e["weight"]) {
     TypePool.hasWeightedEvent = true;
   }
+  // Cost associated with the event, defaulting to 0 if not provided.
   var cost = e["cost"] || 0;
   if(cost) {
     cost = +cost;
     if(Number.isNaN(cost)) {
-      cost = 0;
+      cost = 0; // Ensure cost is a valid number.
     }
   }
+  // Method to get the cost of the event.
   this.cost = function() {
     return cost;
   };
 
   var resultFlag = (e["flag"] || "").trim();
+  // Indicates whether the event is selected.
   var selected = false;
 
   var topoX = -1;
@@ -30,24 +38,27 @@ function Event(e, pool, dictionary) {
     if(!arguments.length) return topoX;
     topoX = _;
   };
-
+   // Index of the event within its type.
   var ixInType = -1;
   this.ixInType = function(_) {
     if(!arguments.length) return ixInType;
     ixInType = _;
   };
 
+  // Last known X-coordinate, useful for tracking movement
   var lastX = Number.NaN;
   this.lastX = function(_) {
     if(!arguments.length) return lastX;
     lastX = _;
   };
+   // Width of the event representation
   var width = Number.NaN;
   this.width = function(_) {
     if(!arguments.length) return width;
     width = _;
   };
 
+  // Visibility status of the event
   var shown = true;
   this.shown = function(_) {
     if(!arguments.length) return shown;
@@ -57,7 +68,7 @@ function Event(e, pool, dictionary) {
       destroyed = false;
     }
   };
-
+   // Checks if the current event is equivalent to another event based on time, weight, and description
   this.eq = function(otherEvent) {
     if(that === otherEvent) return true;
     if(that.getTime() !== otherEvent.getTime()) return false;
@@ -65,10 +76,12 @@ function Event(e, pool, dictionary) {
     if(that.getDesc() !== otherEvent.getDesc()) return false;
     return true;
   };
-
+  // Determine the type of the event by adding it to the event pool and referencing the dictionary.
   var type = pool.addEventToType(that, e, dictionary);
+  // Generate a description for the event.
   var desc = Event.eventDesc(e, type);
 
+   // Register the event by its ID if present in the data.
   if("event_id" in e) {
     pool.registerNamedEvent(e["event_id"], that);
   }
@@ -81,9 +94,11 @@ function Event(e, pool, dictionary) {
       pool.registerEventGroup(eg_id, that);
     }
   }
+   // Method to get the event group ID
   this.getEventGroupId = function() {
     return eg_id;
   };
+  // Cached value to determine the first event of the group
   var fog = null
   this.firstOfGroup = function(_) {
     if(!arguments.length) {
@@ -95,6 +110,7 @@ function Event(e, pool, dictionary) {
     fog = _;
   };
 
+   // Method to determine the first event of the group based on time.
   function getFirstOfGroup() {
     if(!eg_id.length) return that;
     var typeId = that.getType().getTypeId();
@@ -115,24 +131,29 @@ function Event(e, pool, dictionary) {
     });
     return eve;
   }
-
+  // Determines if this is the first event of its type
   this.isFirstOfType = function() {
     return type.getCount() && type.getEventByIndex(0) === that;
   };
+  // Checks if the event is weighted
   this.isWeighted = function() {
     return !!specialInfo;
   };
+   // Method to get the weight of the event
   this.getWeight = function() {
     return specialInfo ? specialInfo.weight : 0;
   };
+  // Show only the events that are weighted
   this.showOnlyWeighted = function() {
     that.shown(!!specialInfo);
   };
+  // Method to handle click selection of the event
   this.clickSelected = function() {
     var pool = that.getType().getPool();
     pool.highlightMode(TypePool.HIGHLIGHT_BOTH);
     pool.highlightEvent(that);
   };
+  // Set the selected state of the event
   this.setSelected = function(isSelected) {
     var old = selected;
     selected = !!isSelected;
@@ -149,6 +170,7 @@ function Event(e, pool, dictionary) {
   this.getType = function() {
     return type;
   };
+  // Method to get the color of the event
   this.getColor = function() {
     var pool = type.getPool();
     if(pool.greyOutRest() && pool.hasSelection() && pool.fixSelection() && !that.isSelected()) {
@@ -169,7 +191,9 @@ function Event(e, pool, dictionary) {
   var sel = null;
   var additional = null;
   var connectionsPath = null;
+  // Indicates if the event has been destroyed
   var destroyed = false;
+  // Method to select the event, which creates an SVG rectangle representing the event
   this.select = function() {
     if(destroyed) {
       console.warn("event already destroyed");
@@ -181,6 +205,7 @@ function Event(e, pool, dictionary) {
     }
     return sel;
   };
+   // Method to update the visual appearance of the event
   this.updateLook = function() {
     if(destroyed) {
       console.warn("event already destroyed");
@@ -191,6 +216,7 @@ function Event(e, pool, dictionary) {
       "stroke": that.isSelected() ? "gray" : "gray",
       "stroke-width": 0.1
     });
+    // Handle connections to other events
     if(connections.length && !connectionsPath) {
       connectionsPath = pool.select().append("g").datum(that);
     }
@@ -222,6 +248,7 @@ function Event(e, pool, dictionary) {
     }
     return true;
   };
+  // Method to update additional visual elements for weighted events
   this.updateAdditional = function(x, y) {
     if(!specialInfo) {
       if(additional) {
@@ -245,6 +272,7 @@ function Event(e, pool, dictionary) {
       // "opacity": 0.5
     });
   };
+  // Method to delete the event from the visualization
   this.deleteEvent = function() {
     if(sel) {
       sel.remove();
@@ -260,7 +288,7 @@ function Event(e, pool, dictionary) {
     }
     destroyed = true;
   };
-
+  // Method to create a list entry for the event in the sidebar or other UI component
   this.createListEntry = function(sel) {
     sel.on("click", function(e) {
       if(d3.event.button != 0) return;
@@ -273,6 +301,7 @@ function Event(e, pool, dictionary) {
     });
     sel.append("span");
   };
+  // Method to update the list entry when the event is modified
   this.updateListEntry = function(sel, singleSlot, singleType) {
     var color = that.getBaseColor();
     var showSelection = pool.highlightEvent() === that && (pool.highlightMode() === TypePool.HIGHLIGHT_BOTH);
@@ -287,12 +316,15 @@ function Event(e, pool, dictionary) {
     // }
   };
 } // Event
+// Static method to generate the next unique ID for an event
 Event.currentId = 0;
 Event.nextId = function() {
   var id = "e" + Event.currentId;
   Event.currentId += 1;
   return id;
 };
+
+// Static method to generate the description of an event based on its type
 Event.eventDesc = function(e, type) {
   var add;
   if("flag" in e) {

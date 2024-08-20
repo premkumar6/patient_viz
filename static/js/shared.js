@@ -1,8 +1,7 @@
-var headList = [];
-var headPrefix = "pHeadList_"
-// var currentPage = 1;
-// var hasMoreEvents = true;
+var headList = []; // List to store header elements
+var headPrefix = "pHeadList_" // Prefix for IDs of header elements
 
+// Initialize the search bar and add an event listener for input changes
 const searchBar = d3.select("#eventSearchBar");
 searchBar.on("input", function() {
   const searchTerm = this.value.toLowerCase();
@@ -14,18 +13,21 @@ searchBar.on("input", function() {
   pool.updateLook();
 });
 
+// Function to refresh the information section with patient data
 function refreshInfo(pid, person) {
+  // Remove all existing header list elements
   headList.forEach(function(sel) {
     sel.remove();
   });
   
-  headList = [];
+  headList = []; // Clear the headList array
 
   var sel = d3.select("#pHeadList");
-  var hasId = false;
-  var id = pid;
+  var hasId = false; // Flag to check if the ID is present
+  var id = pid; // Initialize the patient ID
   var selId = null; // Initialize selId
 
+  // Function to add an item to the information section
   function addItem(item) {
     var li = sel.insert("li", ":first-child");
     var div = li.append("div");
@@ -51,16 +53,17 @@ function refreshInfo(pid, person) {
     }
     headList.push(li);
   }
-
+  // Add all info items to the header list
   if ("info" in person) {
     person["info"].sort(function(a, b) {
-      return d3.descending(a["id"], b["id"]);
+      return d3.descending(a["id"], b["id"]); // Sort the info items by ID in descending order
     });
     person["info"].forEach(function(item) {
-      addItem(item);
+      addItem(item); // Add each item to the header list
     });
   }
-
+  
+  // If no ID was found, add the patient ID as an item
   if (!hasId) {
     addItem({
       "id": "id",
@@ -68,50 +71,52 @@ function refreshInfo(pid, person) {
     });
   }
 
+  // Update the start and end time display with formatted time
   d3.select("#pStart").text(jkjs.time.pretty(person["start"]));
   d3.select("#pEnd").text(jkjs.time.pretty(person["end"]));
   return selId;
 }
 
+// Function to initialize views and set up various components
 function initViews(mainG, secG, suppl, blank, eventList, typeList, overview, setBox, onVC, busy, updateViewport) {
   var res = [];
-  var pool = new TypePool(busy, overview, setBox, onVC, 8, 8);
-  //pool.setSelections(mainG, secG); 
+  var pool = new TypePool(busy, overview, setBox, onVC, 8, 8); // Create a new TypePool instance
   
   // Event Search Bar
   if (d3.select("#eventSearchBar").empty()) {
     const searchBar = d3.select("#eventSearchBar");
-
+    
     searchBar.on("input", function() {
       const searchTerms = this.value.toLowerCase().split(' '); // Split search into words
       pool.traverseEvents(function(gid, tid, e) {
         const desc = e.getDesc().toLowerCase();
         const typeName = e.getType().getName().toLowerCase();
         const matchesSearch = searchTerms.every(term => desc.includes(term) || typeName.includes(term)); // Match if all words are found in either desc or typeName
-        e.shown(matchesSearch);
+        e.shown(matchesSearch);  // Show or hide events based on the match
       });
-      pool.updateLook();
+      pool.updateLook(); // Update the visualization to reflect changes
     });
   }
 
 
-  pool.setSelections(mainG, secG);
+  pool.setSelections(mainG, secG); // Set the main and secondary selections in the pool
   setupModes(pool);  // Setup modes once
-  res.push(pool);
-  setupRectSelection(pool, blank);
-  setupClickAction(pool, blank);
+  res.push(pool); // Add the pool to the results array
+  setupRectSelection(pool, blank);  // Setup rectangular selection functionality
+  setupClickAction(pool, blank); // Setup click actions on the visualization
   var supplH = 100;
   var topMargin = supplH - 32;
   setupAxisLabels(pool, suppl, supplH, topMargin);
-  res.push(setupEventView(pool, eventList));
-  res.push(setupTypeView(pool, typeList));
-  res.push(setupLinechart(pool, suppl, topMargin));
-  res.push(setupHistogram(pool, suppl, topMargin));
-  res.push(new Labels(pool, updateViewport, blank));
+  res.push(setupEventView(pool, eventList)); // Setup the event view and add to results
+  res.push(setupTypeView(pool, typeList));  // Setup the type view and add to results
+  res.push(setupLinechart(pool, suppl, topMargin)); // Setup the line chart and add to results
+  // res.push(setupHistogram(pool, suppl, topMargin));  // Setup the histogram and add to results
+  res.push(new Labels(pool, updateViewport, blank));  // Setup the labels and add to results
   busy.setState(jkjs.busy.state.norm);
   return res;
 }
 
+// Function to setup xMode and yMode dropdowns
 function setupModes(pool) {
   // Ensure the dropdowns are initialized only once
   if (d3.select("#xMode select").empty()) {
@@ -136,89 +141,80 @@ function setupModes(pool) {
     });
   }
 }
-
-function loadPerson(pid, person, pool, eventView, typeView, linechart, histogram, dictionary, suppl) {
-  // if (currentPage ==1) {
-  var selId = refreshInfo(("" + pid).trim(), person);
+// Function to load a person's data into the visualization
+function loadPerson(pid, person, pool, eventView, typeView, linechart, dictionary, suppl) {
+  var selId = refreshInfo(("" + pid).trim(), person); // Refresh the info section with the person's data
   pool.clearEvents();
   pool.setTimeRange(person.start, person.end);
   linechart.values("total" in person ? person["total"] : []);
-  // setupBars(pool,person)
-  // }
-  pool.readEvents(person, dictionary);
+  pool.readEvents(person, dictionary); // Load the events from the person's data
 
-  if(!linechart.hasContent()) { // FIXME make possible for both to show at the same time
-    var claims = {};
-    var claimToTime = {};
-    var noHistogram = true;
-    pool.traverseAllEvents(function(_, _, e) {
-      var claim = e.getEventGroupId();
-      var cost = e.cost();
-      if(cost) {
-        noHistogram = false;
-      }
-      var t = e.getTime();
-      if(!claim.length) {
-        claim = "__time__" + t;
-      }
-      if(claim in claims) {
-        if(claim.indexOf("__time__") === 0) {
-          claims[claim] += cost;
-        } else {
-          claims[claim] === cost || console.warn("cost mismatch", claims[claim], cost);
-          if(claimToTime[claim] > t) {
-            claimToTime[claim] = t;
-          }
-        }
-      } else {
-        claims[claim] = cost;
-        claimToTime[claim] = t;
-      }
-    });
-    var times = {};
-    Object.keys(claims).forEach(function(claim) {
-      var cost = claims[claim];
-      var t = claimToTime[claim];
-      if(!(t in times)) {
-        times[t] = cost;
-      } else {
-        times[t] += cost;
-      }
-    });
-    if(!noHistogram) {
-      histogram.values(Object.keys(times).map(function(t) {
-        return [ t, times[t] ];
-      }));
-      jkjs.util.toFront(histogram.getG(), false);
-    }
-  }
-  var sh = linechart.hasContent() || histogram.hasContent() ? 100 : 32;
-  suppl.style({
-    "height": sh + "px"
-  });
-  pool.hasLinechart(linechart.hasContent() || histogram.hasContent());
+  // if(!linechart.hasContent()) { // If the line chart has no content, prepare the histogram
+  //   var claims = {};
+  //   var claimToTime = {};
+  //   var noHistogram = true;
+  //   pool.traverseAllEvents(function(_, _, e) {
+  //     var claim = e.getEventGroupId();
+  //     var cost = e.cost();
+  //     if(cost) {
+  //       noHistogram = false;
+  //     }
+  //     var t = e.getTime();
+  //     if(!claim.length) {
+  //       claim = "__time__" + t;
+  //     }
+  //     if(claim in claims) {
+  //       if(claim.indexOf("__time__") === 0) {
+  //         claims[claim] += cost;
+  //       } else {
+  //         claims[claim] === cost || console.warn("cost mismatch", claims[claim], cost);
+  //         if(claimToTime[claim] > t) {
+  //           claimToTime[claim] = t;
+  //         }
+  //       }
+  //     } else {
+  //       claims[claim] = cost;
+  //       claimToTime[claim] = t;
+  //     }
+  //   });
+  //   var times = {};
+  //   Object.keys(claims).forEach(function(claim) {
+  //     var cost = claims[claim];
+  //     var t = claimToTime[claim];
+  //     if(!(t in times)) {
+  //       times[t] = cost;
+  //     } else {
+  //       times[t] += cost;
+  //     }
+  //   });
+  //   // If there is cost data, display the histogram
+  //   if(!noHistogram) {
+  //     histogram.values(Object.keys(times).map(function(t) {
+  //       return [ t, times[t] ];
+  //     }));
+  //     jkjs.util.toFront(histogram.getG(), false);
+  //   }
+  // }
+  // var sh = linechart.hasContent() || histogram.hasContent() ? 100 : 32;
+  // suppl.style({
+  //   "height": sh + "px"
+  // });
+  // pool.hasLinechart(linechart.hasContent() || histogram.hasContent());
   typeView.updateLists();
   setupBars(pool, person);
   setupYCluster(pool, d3.select("#pYCluster"), typeView);
   pool.updateLook();
-  // if (person.pagination) {
-  //   currentPage = person.pagination.page;
-  //   hasMoreEvents = currentPage < person.pagination.total_pages;
-  // } else {
-  //   hasMoreEvents = false;
-  // }
-  
-  //updateLoadMoreButtonVisibility();
   return selId;
 }
 
-
+// Function to setup horizontal and vertical bars in the pool
 function setupBars(pool, person) {
   if("classes" in person) {
     Object.keys(person["classes"]).forEach(function(key) {
       pool.addStyleClass(key, person["classes"][key]);
     });
   }
+  // Add horizontal bars
   if("h_bars" in person) {
     person["h_bars"].forEach(function(obj) {
       pool.addHBar(obj["group"], obj["id"], true);
@@ -234,6 +230,7 @@ function setupBars(pool, person) {
       }
     });
   }
+   // Add vertical spans
   if("v_spans" in person) {
     person["v_spans"].forEach(function(span) {
       var from = +span["from"];
@@ -241,7 +238,7 @@ function setupBars(pool, person) {
       var styleClass = "class" in span ? span["class"] : "";
       pool.addVSpan(from, to, styleClass, true);
     });
-  }
+  }// If auto mode is enabled, find areas of interest and add vertical bars automatically
   if(auto) {
     // find areas of interest
     var windowSize = 3;
@@ -299,25 +296,26 @@ function setupBars(pool, person) {
     });
   }
 }
-
+// Function to setup rectangular selection functionality
 function setupRectSelection(pool, blank) {
-  var sel = pool.select();
+  var sel = pool.select(); // Create a selection element in the pool
   var selectionRect = sel.append("rect").style({
     "opacity": 0,
-    "fill": "cornflowerblue"
+    "fill": "cornflowerblue" // Create a selection element in the pool
   });
 
   var timeRangeText = sel.append("text").style({
-    "opacity": 0,
+    "opacity": 0, // Initially hidden
     "fill": "black",
     "font-size": "12px",
     "text-anchor": "middle",
     "background": "white"
   });
 
-  jkjs.util.toFront(selectionRect, false);
-  var rect = null;
+  jkjs.util.toFront(selectionRect, false); // Move the selection rectangle to the front
+  var rect = null; // Initialize the rectangle object
 
+  // Function to create an absolute rectangle
   function makeAbsRect(rect) {
     return {
       "x": rect.width < 0 ? rect.x + rect.width : rect.x,
@@ -326,7 +324,7 @@ function setupRectSelection(pool, blank) {
       "height": Math.abs(rect.height)
     };
   }
-
+  // Function to update the position and size of the selection rectangle
   function updateSelectionRect() {
     if (!rect) {
       selectionRect.attr({
@@ -341,7 +339,7 @@ function setupRectSelection(pool, blank) {
     var absRect = makeAbsRect(rect);
     selectionRect.attr(absRect).style("opacity", 0.5);
 
-    // Calculate and display the time range
+    // Calculate and display the time range of the selection
     var startTime = pool.getTimeByX(absRect.x);
     var endTime = pool.getTimeByX(absRect.x + absRect.width);
     var timeRange = `Start: ${new Date(startTime * 1000).toLocaleString()} - End: ${new Date(endTime * 1000).toLocaleString()}`;
@@ -353,7 +351,7 @@ function setupRectSelection(pool, blank) {
     // d3.select("#timeRangeContent").html(timeRange);
     d3.select("#timeRangeContent").html(`Start: ${new Date(startTime * 1000).toLocaleString()}<br>End: ${new Date(endTime * 1000).toLocaleString()}`);
   }
-
+  // Drag behavior for creating a selection rectangle
   var drag = d3.behavior.drag()
     .on("dragstart", function() {
       var eve = d3.event.sourceEvent;
@@ -382,23 +380,25 @@ function setupRectSelection(pool, blank) {
   blank.call(drag);
 }
 
+// Function to setup click actions on the visualization
 function setupClickAction(pool, blank) {
 
+   // Function to select the current element under the cursor
   function selectCur() {
     if(pool.fixSelection()) return;
     var cur = pool.getMousePos();
     var hasEvent = false;
-    pool.startBulkSelection();
+    pool.startBulkSelection(); // Begin a bulk selection operation
     if(!pool.joinSelections()) {
       pool.traverseEvents(function(gid, tid, e) {
-        e.setSelected(false);
+        e.setSelected(false); // Deselect all events if joinSelections is not active
       });
     }
     var first = null;
     if(pool.verticalSelection()) {
       pool.traverseEventsForX(cur[0], function(e) {
         if(!first) first = e;
-        e.setSelected(true);
+        e.setSelected(true);  // Select events vertically
       });
       pool.highlightMode(TypePool.HIGHLIGHT_VER);
     } else {
@@ -455,6 +455,7 @@ function setupClickAction(pool, blank) {
   pool.updateSelection();
 }
 
+// Function to setup axis labels on the supplementary view
 function setupAxisLabels(pool, suppl, h, topMargin) {
   suppl.style({
     "height": h + "px"
@@ -514,7 +515,7 @@ function setupAxisLabels(pool, suppl, h, topMargin) {
     pool.setVGrids(ticks);
   });
 }
-
+// Function to setup a line chart in the supplementary view
 function setupLinechart(pool, suppl, topMargin) {
   var lc = new Linechart(suppl);
   var timeMap = function(t) {
@@ -540,33 +541,33 @@ function setupLinechart(pool, suppl, topMargin) {
   });
   return lc;
 }
-
-function setupHistogram(pool, suppl, topMargin) {
-  var hs = new Histogram(suppl);
-  var timeMap = function(t) {
-    var vis = pool.linearTime();
-    return vis ? pool.getXByTime(t) : 0;
-  };
-  var yMap = function(v) {
-    var vis = pool.linearTime();
-    return vis ? (1 - v) * topMargin : topMargin;
-  };
-  hs.mapping([ timeMap, yMap ]);
-  pool.addViewportChangeListener(function(svgport, viewport, scale, smooth) {
-    var g = hs.getG();
-    var gt = jkjs.zui.asTransition(g, smooth);
-    var sx = scale;
-    var dx = -viewport.x;
-    gt.attr({
-      "transform": "scale(" + sx + " 1) translate(" + dx + " 0)"
-    });
-  });
-  pool.addSizeListener(function(w, _) {
-    hs.updateWidth(w);
-  });
-  return hs;
-}
-
+// Function to setup a histogram in the supplementary view
+// function setupHistogram(pool, suppl, topMargin) {
+//   var hs = new Histogram(suppl);
+//   var timeMap = function(t) {
+//     var vis = pool.linearTime();
+//     return vis ? pool.getXByTime(t) : 0;
+//   };
+//   var yMap = function(v) {
+//     var vis = pool.linearTime();
+//     return vis ? (1 - v) * topMargin : topMargin;
+//   };
+//   hs.mapping([ timeMap, yMap ]);
+//   pool.addViewportChangeListener(function(svgport, viewport, scale, smooth) {
+//     var g = hs.getG();
+//     var gt = jkjs.zui.asTransition(g, smooth);
+//     var sx = scale;
+//     var dx = -viewport.x;
+//     gt.attr({
+//       "transform": "scale(" + sx + " 1) translate(" + dx + " 0)"
+//     });
+//   });
+//   pool.addSizeListener(function(w, _) {
+//     hs.updateWidth(w);
+//   });
+//   return hs;
+// }
+// Function to setup the event view
 function setupEventView(pool, eventList) {
 
   var eventListElement = d3.select("#pTypesRight");

@@ -5,23 +5,25 @@ var SLOW_MODE = false; // Flag to control slow mode behavior
 var DEBUG_V_SEGMENTS = false; // Flag to control debug view segments
 var SHOW_EVENT_GROUPS = false; // Flag to show event groups
 var busy = null;  // Variable to manage busy state
+let dictionary = {}; 
 
-
+// Encryption settings: Key and IV used for decrypting data
 const ENCRYPTION_KEY = CryptoJS.enc.Utf8.parse('ThisIsA16ByteKey');
 const IV = CryptoJS.enc.Utf8.parse('ThisIsA16ByteIV!');
 
+// Function to decrypt data using AES encryption
 function decryptData(encryptedData) {
-    const ciphertext = CryptoJS.enc.Base64.parse(encryptedData);
-    const decrypted = CryptoJS.AES.decrypt(
-        { ciphertext: ciphertext },
-        ENCRYPTION_KEY,
-        { iv: IV, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
-    );
-    return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
+  const ciphertext = CryptoJS.enc.Base64.parse(encryptedData);
+  const decrypted = CryptoJS.AES.decrypt(
+    { ciphertext: ciphertext },
+    ENCRYPTION_KEY,
+    { iv: IV, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+  );
+  return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
 }
 
-
-function start() {
+// Main function to start application
+async function start() {
   // Configure busy images
   jkjs.busy.imgBusy = "static/lib/jk-js/jkjs/img/busy.gif";
   jkjs.busy.imgWarn = "static/lib/jk-js/jkjs/img/warning.png";
@@ -29,6 +31,7 @@ function start() {
 
   var showLabelsOnDrag = !SLOW_MODE; // Control label visibility on drag based on slow mode
   var topPad = 71; // bootstraps navbar
+  // Configure the main content div
   var divContent = d3.select("#pContent").style({
     "display": "inline-block",
     "margin": "0 5px",
@@ -37,43 +40,47 @@ function start() {
     "font-size": "10px",
     "font-family": "monospace"
   });
+  // Configure the main SVG element
   var divSVG = d3.select("#pSVG");
   var width = 800;
   var height = 600;
-  var ovWidth = 256;
-  var ovHeight = Math.floor(256 / width * height);
+  var ovWidth = 256; // overview width
+  var ovHeight = Math.floor(256 / width * height); // Overview height proportional to the width
+  // Handler functions for managing size and zoom
   var handler = {
-    getSize: function() {
+    getSize: function () {
       return {
         width: ovWidth,
         height: ovHeight
       };
     },
-    getBox: function() {
+    getBox: function () {
       return box;
     },
-    getZUI: function() {
+    getZUI: function () {
       return zui;
     }
   };
   var inTransition = 0;
+   // Initialize the zoom and pan interface
   var zui = jkjs.zui.create(divSVG, {
     width: width + "px",
     height: height + "px"
   }, {
     width: width,
     height: height
-  }, function() {
+  }, function () {
     return box;
-  }, function(target, translate, scale, w, h, canvasRect, isSmooth) {
+  }, function (target, translate, scale, w, h, canvasRect, isSmooth) {
+    // Manage transition effects when zooming/panning
     if (isSmooth) {
-      labels && labels.setShowLabels(false);
+      labels && labels.setShowLabels(false); // Hide labels during smooth transitions
       pool.inTransition(true);
       inTransition += 1;
-      setTimeout(function() {
+      setTimeout(function () {
         inTransition -= 1;
         if (inTransition == 0) {
-          labels && labels.setShowLabels(true);
+          labels && labels.setShowLabels(true);  // Show labels after transition
           pool.inTransition(false);
           updateViewport();
         }
@@ -83,42 +90,47 @@ function start() {
     var visRect = jkjs.zui.computeVisibleRect(translate, scale, w, h);
     overview.updateCameraRect(canvasRect, visRect, isSmooth);
     pool.onViewportChange(box, visRect, scale, isSmooth);
-  }, [1e-6, 12]); // be generous with zooming! FIXME: adapt zoom extent depending on minTimeDiff #34
+  }, [1e-6, 12]); // Zoom extent settings
 
+  // Function to reset the viewport position
   function updateViewport() {
     zui.move(0, 0, false);
   }
 
+  // Configure the SVG style and event listeners for labels during dragging/zooming
   zui.svg.style({
     "cursor": "crosshair"
   });
   if (!showLabelsOnDrag) {
-    zui.svg.on("mousedown.labels", function() {
+    zui.svg.on("mousedown.labels", function () {
       labels && labels.setShowLabels(false);
-    }).on("mouseup.labels", function() {
+    }).on("mouseup.labels", function () {
       labels && labels.setShowLabels(true);
       updateViewport();
-    }).on("mousewheel.labels", function() {
+    }).on("mousewheel.labels", function () {
       labels && labels.setShowLabels(true);
       updateViewport();
     });
   }
+  // Additional SVG elements for the visualization
   var suppl = divSVG.append("svg");
   var overview = new Overview(d3.select("#pTypesRight"), handler);
-  overview.getSVG().on("mousedown.labels", function() {
+  overview.getSVG().on("mousedown.labels", function () {
     labels && labels.setShowLabels(false);
-  }).on("mouseup.labels", function() {
+  }).on("mouseup.labels", function () {
     labels && labels.setShowLabels(true);
     updateViewport();
   });
+  // Initialize various visual elements
   var pool = null;
   var eventList = null;
   var typeList = null;
   var linechart = null;
-  var histogram = null;
+  // var histogram = null;
   var box = null;
   var labels = null;
 
+  // Function to set the bounding box for the visualization
   function setBox(w, h) {
     box = {
       x: 0,
@@ -126,9 +138,10 @@ function start() {
       width: w,
       height: h
     };
-    overview.onBoxUpdate();
+    overview.onBoxUpdate(); // Update the overview when the box changes
   };
 
+   // Main SVG group for the visualization
   var mainG = zui.inner.append("g").attr({
     "id": "mainG"
   });
@@ -139,6 +152,7 @@ function start() {
     width: width,
     height: height
   });
+  // Rectangle to outline the full SVG area
   var fullRect = zui.svg.append("rect").attr({
     "x": 0,
     "y": 0,
@@ -148,6 +162,7 @@ function start() {
     "stroke-width": 1,
     "fill": "none"
   });
+  // Rectangle for a blank background, initially invisible
   var blank = zui.svg.append("rect").attr({
     "x": 0,
     "y": 0,
@@ -157,6 +172,7 @@ function start() {
     "opacity": 0
   });
 
+  // Function to resize the visualization
   function setSize(w, h) {
     width = w;
     height = h;
@@ -190,32 +206,39 @@ function start() {
     }
   }
 
+  // Initialize the main views and their components
   var views = initViews(mainG, secG, suppl, blank, d3.select("#pTypesRight"), d3.select("#pTypesLeft"), overview, setBox, onVC, busy, updateViewport);
   pool = views[0];
   eventList = views[1];
   typeList = views[2];
   linechart = views[3];
-  histogram = views[4];
+  // histogram = views[4];
   labels = views[5];
 
-  d3.select("#pVSel").on("change", function() {
+  // Load the initial dictionary data
+  await fetchDictionary();
+
+  // Set event listeners for various controls
+  d3.select("#pVSel").on("change", function () {
     pool.verticalSelection(d3.select("#pVSel").node().checked);
   });
-  d3.select("#pShow").on("change", function() {
+  d3.select("#pShow").on("change", function () {
     pool.showOnlyWeightedEvents(!d3.select("#pShow").node().checked);
   });
-  d3.select("#pShowSpans").on("change", function() {
+  d3.select("#pShowSpans").on("change", function () {
     pool.showSpans(d3.select("#pShowSpans").node().checked);
     overview.clearShadow();
     pool.updateLook();
   });
 
+  // Function to update the range for connected slots
   function updateRange() {
     var value = d3.select("#pConnectRange").node().value;
     d3.select("#pConnectRangeDisplay").text(value);
     pool.maxConnectSlot(value);
   }
 
+  // Configure the range input for connecting slots
   d3.select("#pConnectRange").style({
     "width": "50px",
     "display": "inline-block"
@@ -224,81 +247,138 @@ function start() {
     d3.select("#pConnectRange").on("input", updateRange);
   }
 
+  // Parse query strings from the URL to get initial parameters
   var args = jkjs.util.getQueryStrings();
 
+  // Default dictionary file and related variables
   var dictionaryDefault = 'json/dictionary.json';
   var dictionary = null;
   var lastDictionaryFile = null;
 
-// Dynamic Patient ID Creation
-
-async function loadFile(pid, dictionaryFile, createState) {
-  if (createState) {
+  // Function to load patient data dynamically based on ID and group
+  async function loadFile(pid, dictionaryFile, createState, group = null) {
+    if (createState) {
+       // Update the browser history with the new patient ID and dictionary file
       var url = jkjs.util.getOwnURL() + "?p=" + encodeURIComponent(pid) + "&d=" + encodeURIComponent(dictionaryFile);
       window.history.pushState({
-          pid: pid,
-          dictionary: dictionaryFile
+        pid: pid,
+        dictionary: dictionaryFile
       }, "", url);
-  }
-  console.log("Loading patient file from:", pid);
-  busy.setState(jkjs.busy.state.busy);
+    }
+    console.log("Loading patient file from:", pid);
+    busy.setState(jkjs.busy.state.busy); // Set the busy state to show loading
 
-  overview.clearShadow();
-  typeList.clearLists();
-  eventList.setEvents([], false, false);
-  pool.clearEvents();
-  currentPatientId = pid;
+    overview.clearShadow(); // Clear previous visualization shadows
+    typeList.clearLists();// Clear the type list
+    eventList.setEvents([], false, false); // Clear the event list
+    pool.clearEvents();  // Clear the pool of events
+    currentPatientId = pid; // Store the current patient ID
 
-  var personId = pid;
-  if (pid.startsWith('json/') && pid.endsWith('.json')) {
+    var personId = pid;
+    if (pid.startsWith('json/') && pid.endsWith('.json')) {
       personId = pid.substring(5, pid.length - 5);
-  }
+    }
 
-  try {
-      const response = await fetch(`/get_patient_data?id=${encodeURIComponent(personId)}`);
+    try {
+      // Fetch the patient data from the server
+      const response = await fetch(`/get_patient_data?id=${encodeURIComponent(personId)}${group ? '&group=' + encodeURIComponent(group) : ''}`);
       const data = await response.json();
-      
+
       if (data.error) {
-          throw new Error(data.error);
+        throw new Error(data.error);
       }
-      
-      const json_patient = decryptData(data.encrypted_data);
 
-      console.log("Received patient data:", json_patient);
+      const json_patient = decryptData(data.encrypted_data); // Decrypt the patient data
+
+      console.log("Received patient data for group:", group, json_patient);
+
       if (json_patient.start === undefined || json_patient.end === undefined) {
-          console.error("Missing start or end time in patient data");
-          busy.setState(jkjs.busy.state.warn, "Missing start or end time in patient data");
-          return;
+        console.error("Missing start or end time in patient data");
+        busy.setState(jkjs.busy.state.warn, "Missing start or end time in patient data");
+        return;
       }
 
-      const response_dict = await fetch(dictionaryFile);
-      const json_dictionary = await response_dict.json();
+      // Update the dictionary with the new data
+      if (json_patient.dictionary) {
+        updateDictionary(json_patient.dictionary);
+      } else {
+        // If no dictionary in json_patient, fetch it separately
+        await fetchDictionary(group);
+      }
+      // Load the patient data into the visualization
+      loadPerson(pid, json_patient, pool, eventList, typeList, linechart, dictionary, suppl);
 
-      loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, json_dictionary, suppl);
+
+      typeList.updateLists();  // Update the type lists
 
       busy.setState(jkjs.busy.state.norm);
       relayout();
       zui.showAll(false);
 
+      // Hide the loading indicator if present
       var loadingIndicator = document.getElementById('loadingIndicator');
       if (loadingIndicator) loadingIndicator.style.display = 'none';
-  } catch (error) {
+    } catch (error) {
       console.error("Error loading patient data:", error);
       busy.setState(jkjs.busy.state.warn, "Error while loading file: " + error.message);
+    }
   }
-}
+   // Function to fetch the dictionary data, filtered by group
+  async function fetchDictionary(group = null) {
+    try {
+      const url = group
+        ? `/get_dictionary_by_type?type=${encodeURIComponent(group)}`
+        : '/patient-viz/dictionary.json';
+      const response = await fetch(url);
+      const data = await response.json();
+      updateDictionary(data); // Update the local dictionary with the fetched data
+    } catch (error) {
+      console.error('Error loading dictionary data:', error);
+    }
+  }
+
+  // Function to update the local dictionary with new data
+  function updateDictionary(newDictionaryData) {
+    if (!dictionary) {
+      dictionary = {};
+    }
+    // Merge the new dictionary data with the existing dictionary
+    Object.keys(newDictionaryData).forEach(key => {
+      if (!dictionary[key]) {
+        dictionary[key] = {};
+      }
+      Object.assign(dictionary[key], newDictionaryData[key]);
+    });
+    console.log("Updated dictionary:", dictionary); // Debugging
+  }
+
+  // Update the event listener to use the modified loadFile function
+  window.addEventListener('typeChange', async function (e) {
+    currentGroup = e.detail.group;
+
+    try {
+      await fetchDictionary(currentGroup);
+      await loadFile(currentPatientId, lastDictionaryFile || dictionaryDefault, false, currentGroup);
+
+      // Force a complete update of the TypeView
+      typeList.updateLists();
+    } catch (error) {
+      console.error("Error during type change:", error);
+    }
+  });
   // Handle browser back/forward navigation
-  window.onpopstate = function(e) {
+  window.onpopstate = function (e) {
     if (e.state) {
       loadFile(e.state.pid, e.state.dictionary, false);
     }
   };
-
+   // Function to update the visualization layout
   function onVC() {
     relayout();
     zui.showAll(false);
   }
 
+  // Function to adjust the layout when the window is resized or other changes occur
   function relayout() {
     topPad = d3.select("#pHead").node().offsetHeight + 10; // comfort space
     var bodyHeight = window.innerHeight;
@@ -346,12 +426,12 @@ async function loadFile(pid, dictionaryFile, createState) {
     labels && labels.isInit(false);
   }
 
-  window.onresize = function() {
+  window.onresize = function () {
     relayout();
   };
 
-  // Add event listener to the select file button
-  document.getElementById("selectFileBtn").addEventListener("click", function() {
+  // Add event listener to the select file button for dynamic patient ID creation
+  document.getElementById("selectFileBtn").addEventListener("click", function () {
     var patientId = document.getElementById("patientIdInput").value.trim();
     if (patientId) {
       var filePath = "json/" + patientId + ".json";
@@ -361,6 +441,3 @@ async function loadFile(pid, dictionaryFile, createState) {
     }
   });
 }
-
-
-

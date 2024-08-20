@@ -734,15 +734,16 @@ class OMOP:
             
             v_spans.append({"class": visit_name, "from": self.format_time(date_start_dt), "to": self.format_time(date_end_dt)})
     
-    def get_patient(self, pid, dictionary, line_file, class_file):
+    def get_patient(self, pid, dictionary, line_file, class_file, group=None):
         """
-        Retrieve all relevant data for a patient and compile it into an object.
+        Retrieve and assemble a patient's data into a structured object.
 
         :param pid: The person_id of the patient.
         :param dictionary: The dictionary to update with new entries.
-        :param line_file: Optional line file for additional data.
-        :param class_file: Optional class file for additional data.
-        :return: The compiled patient data object.
+        :param line_file: Path to a line file for additional data (used by util.add_files).
+        :param class_file: Path to a class file for additional data (used by util.add_files).
+        :param group: The specific group of data to retrieve. If None, all groups are retrieved.
+        :return: A structured object containing the patient's data.
         """
         obj = {
             "info": [],
@@ -756,22 +757,31 @@ class OMOP:
         util.add_files(obj, line_file, class_file)
         self.get_info(pid, obj)
         self.add_info(obj, "pid", "Patient", pid)
-        self.get_diagnoses(pid, obj, dictionary, new_dict_entries)
-        self.get_observations_concept_valued(pid, obj, dictionary, new_dict_entries)
-        self.get_observations_string_valued(pid, obj, dictionary, new_dict_entries)
-        self.get_observations_number_valued(pid, obj, dictionary, new_dict_entries)
-        self.get_procedures(pid, obj, dictionary, new_dict_entries)
-        self.get_drugs(pid, obj, dictionary, new_dict_entries)
-        self.get_measurements(pid, obj, dictionary, new_dict_entries)
+
+         # Depending on the group, retrieve specific types of data for the patient
+        if group is None or group == "Condition":
+            self.get_diagnoses(pid, obj, dictionary, new_dict_entries)
+        if group is None or group == "Observation":
+            self.get_observations_concept_valued(pid, obj, dictionary, new_dict_entries)
+            self.get_observations_string_valued(pid, obj, dictionary, new_dict_entries)
+            self.get_observations_number_valued(pid, obj, dictionary, new_dict_entries)
+        if group is None or group == "Procedure":
+            self.get_procedures(pid, obj, dictionary, new_dict_entries)
+        if group is None or group == "Drug":
+            self.get_drugs(pid, obj, dictionary, new_dict_entries)
+        if group is None or group == "Measurement":
+            self.get_measurements(pid, obj, dictionary, new_dict_entries)
+
         self.get_visits(pid, obj)
-        min_time = float('inf')
-        max_time = float('-inf')
+
+        min_time = float('inf') # Start with infinity to find the minimum time
+        max_time = float('-inf') # Start with negative infinity to find the maximum time
         for e in obj["events"]:
             time = e["time"]
             if time < min_time:
-                min_time = time
+                min_time = time # Update min_time if a smaller time is found
             if time > max_time:
-                max_time = time
+                max_time = time # Update max_time if a larger time is found
         obj["start"] = min_time if min_time != float('inf') else 0
         obj["end"] = max_time if max_time != float('-inf') else 0
         logger.debug(f"Patient {pid} time range: {obj['start']} - {obj['end']}")
