@@ -1,7 +1,5 @@
 /**
  * This package amends the zoomable user interface of d3 with extended functionality.
- *
- * @author Joschi <josua.krause@gmail.com>
  */
 
 jkjs = window.jkjs || {}; // init namespace
@@ -161,7 +159,14 @@ jkjs.zui = function() {
     function showAll(smooth) {
       if (!getCanvasRect)
         return;
-      showRectangle(getCanvasRect(), canvasMargin, true, smooth);
+      var rect = getCanvasRect();
+      var margin = canvasMargin * 4; // Increased margin for better visibility
+      showRectangle({
+        x: rect.x - margin,
+        y: rect.y - margin,
+        width: rect.width + 2 * margin,
+        height: rect.height + 2 * margin
+      }, canvasMargin, true, smooth);
     }
 
     svg.on("dblclick.zoom", function() {

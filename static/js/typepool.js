@@ -616,7 +616,15 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   var xModes = [
     {
       "byTime": function(time) {
+        // var compressionFactor = 0.5; // Adjust this factor to control compression
         return (time - startTime) / (endTime - startTime) * (getWidth() - colW);
+        // var compressionFactor = 0.7; 
+    
+        // // Calculate density factor based on event density (e.g., events per year)
+        // var densityFactor = (time - startTime) / (endTime - startTime);
+        
+        // // Scale the density factor linearly (instead of logarithmically)
+        // return densityFactor * (getWidth() - colW) * compressionFactor;
       },
       "byEvent": function(e) {
         return that.getXByTime(e.getTime());
@@ -684,8 +692,9 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   };
 
   this.getXByTime = function(time) {
-    return xMode["byTime"](time);
+      return xMode["byTime"](time);
   };
+  
   this.getXByEventTime = function(e) {
     return xMode["byEvent"](e);
   };
@@ -939,9 +948,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       });
       return type;
     });
-    var add = 4;
+    var add = 100;
     var maxY = assignY(displayTypes);
     var maxX = 0;
+    // Traverse through each event and update the appearance
     that.traverseEvents(function(gid, tid, e) {
       e.updateLook();
       var eSel = e.select();
@@ -953,7 +963,9 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       if(oldX != newX) { // only update if necessary -- very expensive!!!
         eSel.attr({
           "x": newX - add,
-          "y": -add
+          "y": -add,
+          "width": colW + 2 * add,  // Adjust the width scaling here
+          "height": rowH + 2 * add  // Adjust the height scaling here
         });
         e.lastX(newX);
       }
@@ -1026,7 +1038,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     var vis = that.linearTime();
     vBars.forEach(function(bar) {
       bar.sel.style({
-        "opacity": vis && DEBUG_V_SEGMENTS ? 0.5 : 0
+        "opacity": vis ? 0.5 : 0
       });
       if(!vis) return;
       var x = that.getXByTime(bar.time);
@@ -1036,7 +1048,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     });
     vSpan.forEach(function(span) {
       span.sel.style(that.getStyleClass(span.styleClass, {
-        "opacity": 0.2,
+        "opacity": vis ? 0.2 : 0,
         "color": "gray"
       }));
       if(!vis || !showSpans) {
@@ -1110,6 +1122,13 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   });
 
   this.getGroupColor = function(gid) {
+    const typeGroup = that.getTypeFor(gid, "");
+    
+    // Check if typeGroup is null or undefined
+    if (!typeGroup) {
+      console.warn(`Group not found for gid: ${gid}`);
+      return '#ccc'; // Return a default color or handle gracefully
+    }
     return that.getTypeFor(gid, "").getColor();
   };
 
@@ -1117,6 +1136,11 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   
   TypePool.prototype.selectInRect = function(sRect, done) {
     if (!done) return; // Don't update if selection isn't finalized yet
+
+    // Hide the vertical helper line
+    if (this.helpV) {
+      this.helpV.style("opacity", 0);
+      }
 
     this.startBulkSelection(); // Begin a series of selection changes
 

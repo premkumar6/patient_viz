@@ -16,7 +16,7 @@ function EventView(sel) {
   // Create the main container for the EventView
   var full = sel.append("div");
   // Create and style the header, which displays the title "Selection"
-  var header = full.append("span").text("Selection").style({
+  var header = full.append("span").text("Selection").classed("hidden", true).style({
     "font-weight": 500
   });
   // Create a container for the list of events.

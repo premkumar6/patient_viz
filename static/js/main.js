@@ -92,11 +92,10 @@ async function start() {
     pool.onViewportChange(box, visRect, scale, isSmooth);
   }, [1e-6, 12]); // Zoom extent settings
 
-  // Function to reset the viewport position
-  function updateViewport() {
-    zui.move(0, 0, false);
-  }
-
+    // Function to reset the viewport position
+    function updateViewport() {
+      zui.move(0, 0, false);
+    }
   // Configure the SVG style and event listeners for labels during dragging/zooming
   zui.svg.style({
     "cursor": "crosshair"
@@ -126,7 +125,7 @@ async function start() {
   var eventList = null;
   var typeList = null;
   var linechart = null;
-  // var histogram = null;
+  var histogram = null;
   var box = null;
   var labels = null;
 
@@ -212,7 +211,7 @@ async function start() {
   eventList = views[1];
   typeList = views[2];
   linechart = views[3];
-  // histogram = views[4];
+  histogram = views[4];
   labels = views[5];
 
   // Load the initial dictionary data
@@ -257,6 +256,7 @@ async function start() {
 
   // Function to load patient data dynamically based on ID and group
   async function loadFile(pid, dictionaryFile, createState, group = null) {
+    document.getElementById('timelineContainer').style.display = 'none';
     if (createState) {
        // Update the browser history with the new patient ID and dictionary file
       var url = jkjs.util.getOwnURL() + "?p=" + encodeURIComponent(pid) + "&d=" + encodeURIComponent(dictionaryFile);
@@ -291,6 +291,9 @@ async function start() {
       const json_patient = decryptData(data.encrypted_data); // Decrypt the patient data
 
       console.log("Received patient data for group:", group, json_patient);
+      console.log("Number of events:", json_patient.events.length);
+      console.log("First event:", json_patient.events[0]);
+      console.log("Last event:", json_patient.events[json_patient.events.length - 1]);
 
       if (json_patient.start === undefined || json_patient.end === undefined) {
         console.error("Missing start or end time in patient data");
@@ -306,7 +309,18 @@ async function start() {
         await fetchDictionary(group);
       }
       // Load the patient data into the visualization
-      loadPerson(pid, json_patient, pool, eventList, typeList, linechart, dictionary, suppl);
+      loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, dictionary, suppl);
+
+      // Show the timeline container
+      document.getElementById('timelineContainer').style.display = 'block';
+      // Show hidden elements after data is loaded
+      d3.select("#timeRangeDisplay").classed("hidden", false);
+
+      // Targeting the 'Selection' span within the parent div
+      d3.select("#pTypesRight  span").classed("hidden", false);
+      
+      d3.select("#pTypesRight select.dropdown").classed("hidden", false);
+
 
 
       typeList.updateLists();  // Update the type lists
@@ -321,6 +335,8 @@ async function start() {
     } catch (error) {
       console.error("Error loading patient data:", error);
       busy.setState(jkjs.busy.state.warn, "Error while loading file: " + error.message);
+      // Hide the timeline container in case of an error
+      document.getElementById('timelineContainer').style.display = 'none';
     }
   }
    // Function to fetch the dictionary data, filtered by group
@@ -377,7 +393,6 @@ async function start() {
     relayout();
     zui.showAll(false);
   }
-
   // Function to adjust the layout when the window is resized or other changes occur
   function relayout() {
     topPad = d3.select("#pHead").node().offsetHeight + 10; // comfort space

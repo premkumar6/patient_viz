@@ -5,7 +5,7 @@ function TypeView(pool, sel, sortDropdownSel) {
 
   var typeSort = null;
   // Create a dropdown for sorting options and handle change events
-  var dropdown = sortDropdownSel.append("select").classed("dropdown", true).on("change", function () {
+  var dropdown = sortDropdownSel.append("select").classed("dropdown hidden", true).on("change", function () {
     var dd = dropdown.node();
     var s = d3.select(dd.options[dd.selectedIndex]).datum();
     that.selectSort(s);
