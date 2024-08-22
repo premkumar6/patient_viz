@@ -1,5 +1,5 @@
-numpy
-scipy
-scikit-learn
-pytz
-SQLAlchemy
+numpy==2.0.1
+pytz==2024.1
+scikit-learn==1.5.1
+scipy==1.14.0
+SQLAlchemy==2.0.32
