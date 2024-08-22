@@ -1,4 +1,4 @@
-// Removed pagination and encrypted the data
+// Filtering data based on event-types and encrypted the data
 
 let isLoading = false;
 var SLOW_MODE = false; // Flag to control slow mode behavior
@@ -6,6 +6,7 @@ var DEBUG_V_SEGMENTS = false; // Flag to control debug view segments
 var SHOW_EVENT_GROUPS = false; // Flag to show event groups
 var busy = null;  // Variable to manage busy state
 let dictionary = {}; 
+var checkboxStates = {};
 
 // Encryption settings: Key and IV used for decrypting data
 const ENCRYPTION_KEY = CryptoJS.enc.Utf8.parse('ThisIsA16ByteKey');
@@ -309,7 +310,11 @@ async function start() {
         await fetchDictionary(group);
       }
       // Load the patient data into the visualization
+      
+      console.log("Patient data loaded, creating checkboxes");
       loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, dictionary, suppl);
+      createEventTypeCheckboxes(pool);
+      // checkboxStates = {}; 
 
       // Show the timeline container
       document.getElementById('timelineContainer').style.display = 'block';
@@ -327,6 +332,7 @@ async function start() {
 
       busy.setState(jkjs.busy.state.norm);
       relayout();
+      pool.updateLook();
       zui.showAll(false);
 
       // Hide the loading indicator if present
@@ -367,7 +373,83 @@ async function start() {
     });
     console.log("Updated dictionary:", dictionary); // Debugging
   }
+  function createEventTypeCheckboxes(pool) {
+    console.log("Creating event type checkboxes");
+    var checkboxContainer = d3.select("#eventTypeCheckboxes");
+    checkboxContainer.selectAll("*").remove(); // Clear existing checkboxes
+  
+    // Create "All" checkbox
+    var allLabel = checkboxContainer.append("label").classed("checkbox-label", true);
+    allLabel.append("input")
+      .attr("type", "checkbox")
+      .property("checked", true)
+      .attr("id", "allEventTypes")
+      .on("change", function() {
+        var checked = d3.select(this).property("checked");
+        checkboxContainer.selectAll("input[type='checkbox']")
+          .filter(function() { return this.id !== "allEventTypes"; })
+          .property("checked", checked);
+        filterEventsByType(pool);
+      });
+    allLabel.append("span").text("All");
+  
+    // Get all event types from the dictionary
+    var dictionaryEventTypes = Object.keys(dictionary);
 
+    // Get event types actually present in the patient data
+    var patientEventTypes = [];
+    pool.traverseGroups(function(gid, group) {
+      if (!patientEventTypes.includes(gid)) {
+        patientEventTypes.push(gid);
+      }
+    });
+  
+    // Intersect dictionary event types with patient event types
+    var eventTypes = dictionaryEventTypes.filter(type => patientEventTypes.includes(type));
+  
+    console.log("Event types in patient data:", eventTypes);
+  
+    // Create checkboxes for each event type
+    eventTypes.forEach(function(eventType) {
+      var label = checkboxContainer.append("label").classed("checkbox-label", true);
+      label.append("input")
+        .attr("type", "checkbox")
+        .property("checked", true)
+        .attr("data-event-type", eventType)
+        .on("change", function() {
+          if (!this.checked) {
+            d3.select("#allEventTypes").property("checked", false);
+          }
+          filterEventsByType(pool);
+        });
+      label.append("span").text(eventType);
+    });
+  
+    filterEventsByType(pool); // Initial filtering
+  }
+  function filterEventsByType(pool) {
+    console.log("Filtering events by type");
+    var checkboxContainer = d3.select("#eventTypeCheckboxes");
+    var allChecked = d3.select("#allEventTypes").property("checked");
+    
+    var checkedTypes = [];
+    checkboxContainer.selectAll("input[type='checkbox']")
+      .filter(function() { return this.id !== "allEventTypes" && this.checked; })
+      .each(function() {
+        checkedTypes.push(this.getAttribute("data-event-type"));
+      });
+  
+    console.log("Checked types:", checkedTypes);
+  
+    pool.traverseAllEvents(function(gid, tid, e) {
+      var isVisible = allChecked || checkedTypes.includes(e.getType().getGroup());
+      e.shown(isVisible);
+    });
+  
+    pool.updateLook();
+    pool.updateSelection();
+    zui.showAll(false);
+  }
   // Update the event listener to use the modified loadFile function
   window.addEventListener('typeChange', async function (e) {
     currentGroup = e.detail.group;
@@ -426,6 +508,12 @@ async function start() {
       ovWidth = ovw;
       overview.onSizeUpdate();
     }
+    var headerHeight = d3.select("#pHead").node().offsetHeight;
+    var checkboxContainerHeight = d3.select("#eventTypeCheckboxes").node().offsetHeight;
+    
+    // Adjust the top padding to account for the checkbox container
+    bodyPadding = headerHeight + checkboxContainerHeight + 10; // 10px extra padding
+
     var shadowHeight = overview.getHeightForWidth(listWidthRight);
     var listHeightLeft = allowedHeight;
     var listHeightRight = allowedHeight - shadowHeight;

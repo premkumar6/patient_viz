@@ -1,28 +1,38 @@
+// Constants for label font size and gap between labels
 var LABEL_FONT_SIZE = 12;
 var LABEL_FONT_GAP = 12;
+
 function Labels(pool, updateViewport, blank) {
   var that = this;
-  var useLens = false;
+  var useLens = false;  // Flag to determine if the lens feature is enabled
+
+  // Checkbox element for enabling/disabling the lens feature
   var lensCB = d3.select("#pUseLens").on("change", function() {
-    useLens = lensCB.node().checked;
+    useLens = lensCB.node().checked;  // Update the useLens flag based on checkbox state
     lens.style({
-      "opacity": useLens ? 0.25 : 0
+      "opacity": useLens ? 0.25 : 0  // Set lens opacity based on the flag
     });
-    that.clearScreen();
-    updateViewport();
+    that.clearScreen();  // Clear labels when lens is toggled
+    updateViewport();  // Update the viewport after toggling lens
   });
 
-  var lens = null;
-  var lensView = null;
-  var isInit = false;
+  var lens = null;  // Group element for the lens
+  var lensView = null;  // Ellipse element representing the lens view
+  var isInit = false;  // Flag indicating whether the lens is initialized
+
+  // Getter/setter for the initialization status
   this.isInit = function(_) {
     if(!arguments.length) return isInit;
     isInit = !!_;
   };
+
+  // Variables for storing the lens view position and dimensions
   var lensX = Number.NaN;
   var lensY = Number.NaN;
   var lensW = Number.NaN;
   var lensH = Number.NaN;
+
+  // Method to set the lens view position and dimensions
   this.setLensView = function(x, y, w, h) {
     lensView.attr({
       "cx": x + w * 0.5,
@@ -35,6 +45,8 @@ function Labels(pool, updateViewport, blank) {
     lensW = w;
     lensH = h;
   };
+
+  // Method to get the current lens view
   this.getLensView = function() {
     return {
       x: lensX,
@@ -44,26 +56,28 @@ function Labels(pool, updateViewport, blank) {
     };
   };
 
+  // Delay for moving the lens (in ms), adjusted based on whether SLOW_MODE is enabled
   var LENS_MOVE_WAIT = SLOW_MODE ? 500 : 0;
-  var timeoutID = Number.NaN;
-  var lastPos = [Number.NaN, Number.NaN];
+  var timeoutID = Number.NaN;  // Timeout ID for delaying lens movement
+  var lastPos = [Number.NaN, Number.NaN];  // Last recorded mouse position
 
-  var poolSel = pool.selectSec();
+  var poolSel = pool.selectSec();  // Selection for the secondary pool
   blank.on("mousemove.labels", function() {
-    if(!that.isInit()) return;
-    var pos = getMousePos(poolSel);
+    if(!that.isInit()) return;  // Do nothing if lens is not initialized
+    var pos = getMousePos(poolSel);  // Get the current mouse position
     if(pos[0] == lastPos[0] && pos[1] == lastPos[1]) {
-      return;
+      return;  // Do nothing if the mouse hasn't moved
     } else if(!Number.isNaN(timeoutID)) {
-      clearTimeout(timeoutID);
+      clearTimeout(timeoutID);  // Clear any existing timeout
     }
     lastPos = pos;
     timeoutID = setTimeout(function() {
-      that.setLensView(lastPos[0] - lensW * 0.5, lastPos[1] - lensH * 0.5, lensW, lensH);
-      updateViewport();
+      that.setLensView(lastPos[0] - lensW * 0.5, lastPos[1] - lensH * 0.5, lensW, lensH);  // Update lens view based on mouse position
+      updateViewport();  // Update the viewport after moving the lens
     }, LENS_MOVE_WAIT);
   });
 
+  // Initialize the lens group and lens view ellipse
   lens = poolSel.append("g").style({
     "opacity": 0
   });
@@ -73,57 +87,72 @@ function Labels(pool, updateViewport, blank) {
     "stroke-width": 1
   });
 
+  // Helper function to get the current mouse position relative to a selection
   function getMousePos(sel) {
     return d3.mouse(sel.node());
   };
 
+  // Method to return the associated pool
   this.pool = function() {
     return pool;
   };
 
+  // Method to determine the current label positioning mode based on the useLens flag
   var mode = function() {
     if(useLens) {
       return TypePool.labelsLens;
     }
     return TypePool.hasWeightedEvent ? Labels.labelsByWeight : Labels.labelsByBars;
   };
+
+  // Setter/getter for the label positioning mode
   this.mode = function(_) {
     if(!arguments.length) return mode;
     mode = _;
     updateViewport();
   };
+
+  // Method to show or hide labels based on the `show` flag
   this.setShowLabels = function(show) {
     lens.style({
-      "opacity": useLens && show ? 0.25 : 0
+      "opacity": useLens && show ? 0.25 : 0  // Adjust lens opacity based on the show flag
     });
     pool.traverseTypes(function(gid, tid, type) {
-      type.showLabels(show);
+      type.showLabels(show);  // Show or hide labels for each type
     });
   };
+
+  // Method to clear all labels from the screen
   this.clearScreen = function() {
     pool.traverseTypes(function(gid, tid, type) {
       that.noShow(type);
     });
   };
+
+  // Method to hide and then re-show labels for a type (used to refresh labels)
   this.noShow = function(type) {
     var show = type.showLabels();
     type.showLabels(false);
     type.showLabels(show);
   };
+
+  // Method to position a label for a given type at a specified position
   this.positionLabel = function(type, x, y, width, vpx, vpy, scale, right, event) {
-    var box = pool.boxSize();
+    var box = pool.boxSize();  // Get the size of the boxes in the pool
     var colW = box[0];
     var rowH = box[1];
-    var st = type.selectText();
+    var st = type.selectText();  // Get the text element for the type
     if(!st) return;
 
     var gap = 30;
-    var rx = right ? x - gap : x + gap;
+    var rx = right ? x - gap : x + gap;  // Adjust x position based on alignment
     var fontSize = LABEL_FONT_SIZE;
     st.style({
       "opacity": 1,
       "font-size": fontSize
     });
+
+    // Update the label text and orientation if necessary
     if(type.textWidthCache() !== width || type.textOrientCache() != right) {
       jkjs.text.display(st, type.getName(), {
           x: right ? rx - width : rx,
@@ -139,6 +168,7 @@ function Labels(pool, updateViewport, blank) {
       "y": y
     });
 
+    // Calculate the y and x positions for the connecting line
     var tY = (type.getY() + rowH * 0.5 - vpy) * scale;
     var tX;
     if(event) {
@@ -146,6 +176,8 @@ function Labels(pool, updateViewport, blank) {
     } else {
       tX = right ? rx + gap : rx - gap;
     }
+
+    // Set the attributes for the connecting line
     var sc = type.selectConnect();
     jkjs.util.attr(sc, {
       "x1": right ? rx + 5 : rx - 5,
@@ -157,17 +189,21 @@ function Labels(pool, updateViewport, blank) {
     });
   };
 
+  // Add a viewport change listener to update labels based on the current mode
   pool.addViewportChangeListener(function(svgport, viewport, scale, smooth) {
     var func = mode();
     func(that, svgport, viewport, scale, smooth);
   });
 } // Labels
+
+// Label positioning function when using bars
 Labels.labelsByBars = function(labels, svgport, viewport, scale, smooth) {
   var pool = labels.pool();
   var box = pool.boxSize();
   var colW = box[0];
   var rowH = box[1];
 
+  // Traverse vertical bars and position labels
   pool.traverseVBars(function(from, to, bar) {
     if(!bar) return;
     var refType = bar.labels[0];
@@ -178,13 +214,12 @@ Labels.labelsByBars = function(labels, svgport, viewport, scale, smooth) {
     bar.labels.forEach(function(type) {
       if(!type.isValid()) return;
       if(!type.showLabels()) return;
-      if(type.getY() < 0) { // don't show labels for invalid types
+      if(type.getY() < 0) { // Don't show labels for invalid types
         labels.noShow(type);
         return;
       }
       y = Math.max(y, -LABEL_FONT_GAP + (-viewport.y + type.getY()) * scale);
-      // var event = type.getFirstEventAfter(from);
-      var event = type.proxyType().getFirstProxedEvent();
+      var event = type.proxyType().getFirstProxedEvent();  // Get the first proxied event
       if(!event) return;
       var x = (pool.getXByEventTime(event) - colW - viewport.x) * scale;
       labels.positionLabel(type, x, y, Math.min(Math.max(x - svgport.x - 4, 0), 200), viewport.x, viewport.y, scale, true, event);
@@ -192,10 +227,13 @@ Labels.labelsByBars = function(labels, svgport, viewport, scale, smooth) {
     });
   });
 };
+
+// Label positioning function when using weighted events
 Labels.labelsByWeight = function(labels, svgport, viewport, scale, smooth) {
   if(!TypePool.hasWeightedEvent) return;
   var pool = labels.pool();
 
+  // Traverse types and position labels based on event weights
   pool.traverseTypes(function(gid, tid, type) {
     if(!type.showLabels() || !type.isValid()) {
       labels.noShow(type);
@@ -204,6 +242,7 @@ Labels.labelsByWeight = function(labels, svgport, viewport, scale, smooth) {
     putLabel(type);
   });
 
+  // Helper function to position a label based on weighted events
   function putLabel(type) {
     var weightedEvent = null;
     type.traverseEventRange(viewport.x, viewport.x + viewport.width + 200, function(e) {
@@ -218,7 +257,7 @@ Labels.labelsByWeight = function(labels, svgport, viewport, scale, smooth) {
       labels.noShow(type);
       return;
     }
-    if(type.getY() < 0) { // don't show labels for invalid types
+    if(type.getY() < 0) { // Don't show labels for invalid types
       labels.noShow(type);
       return;
     }
@@ -233,6 +272,8 @@ Labels.labelsByWeight = function(labels, svgport, viewport, scale, smooth) {
     labels.positionLabel(type, ex, ey, Math.min(Math.max(ex - svgport.x - 4, 0), 200), viewport.x, viewport.y, scale, true, weightedEvent);
   }
 };
+
+// Label positioning function when using the lens mode
 TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
   var pool = labels.pool();
   var box = pool.boxSize();
@@ -241,6 +282,8 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
   var nw = Math.min(150 * scale * 1.25, 150);
   var nh = Math.min(150 * scale * 1.25, 150);
   var pLens = labels.getLensView();
+
+  // Initialize the lens view if not already initialized or if dimensions have changed
   if(!labels.isInit() || pLens.width != nw || pLens.height != nh) {
     var w = nw;
     var h = nh;
@@ -249,12 +292,14 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
     labels.setLensView(x, y, w, h);
     labels.isInit(true);
   }
+
   var lv = labels.getLensView();
   var rx = lv.width * 0.5;
   var ry = lv.height * 0.5;
   var cx = lv.x + lv.width * 0.5;
   var cy = lv.y + lv.height * 0.5;
 
+  // Helper functions to calculate x position based on y for lens boundaries
   function xLeft(y) {
     return cx - Math.cos(Math.asin(Math.min(Math.max((cy - y) / ry, -1), 1))) * rx;
   }
@@ -265,6 +310,8 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
 
   var types = [];
   var already = {};
+
+  // Traverse types and collect those that need labels
   pool.traverseTypes(function(gid, tid, origType) {
     if(!origType.showLabels() || !origType.isValid()) {
       labels.noShow(origType);
@@ -278,12 +325,11 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
       return;
     }
     already[type.getTypeId()] = true;
-    if(origType.getY() < 0) { // don'show labels for invalid types
+    if(origType.getY() < 0) { // Don't show labels for invalid types
       labels.noShow(origType);
       return;
     }
-    // need origType to set all y positions since type doesn't necessarily have the correct values
-    type.setY(origType.getY());
+    type.setY(origType.getY());  // Ensure correct Y position for proxied types
     var range = pool.getRangeY(type);
     var minY = -viewport.y + Math.min.apply(null, range);
     var maxY = -viewport.y + Math.max.apply(null, range);
@@ -298,6 +344,8 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
     var leftB = viewport.x + xLeft((-viewport.y + y + rowH * 0.5) * scale) / scale - colW * 0.5;
     var rightB = viewport.x + xRight((-viewport.y + y + rowH * 0.5) * scale) / scale; // + colW * 0.5;
     var mid = (leftB + rightB) * 0.5;
+
+    // Traverse proxied event range and find the best event for labeling
     type.traverseProxedEventRange(leftB, rightB, function(e) {
       return pool.getXByEventTime(e);
     }, function(e, x) {
@@ -326,6 +374,8 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
       labels.noShow(type);
     }
   });
+
+  // Sort types by Y position and position the labels
   types.sort(function(a, b) {
     return d3.ascending(a[0].getY(), b[0].getY());
   });
@@ -349,6 +399,8 @@ TypePool.labelsLens = function(labels, svgport, viewport, scale, smooth) {
       y2 += LABEL_FONT_GAP;
     }
   });
+
+  // Position labels on the right and left sides of the lens
   var yHeight1 = y1 - lv.y;
   var yShift1 = Math.min((lv.height - yHeight1) * 0.5, 0);
   rights.forEach(function(args) {

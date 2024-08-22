@@ -1,51 +1,78 @@
 function TypePool(busy, overview, setBox, onVC, cw, rh) {
   var that = this;
-  var startTime = Number.NaN;
-  var endTime = Number.NaN;
-  var colW = cw;
-  var rowH = rh;
-  var width = Number.NaN;
-  var groups = {};
-  var sel = null;
-  var sec = null;
-  var helpH = null;
-  var helpV = null;
-  var hBars = [];
-  var vBars = [];
-  var vSpan = [];
+  var startTime = Number.NaN;  // Start time for the event pool
+  var endTime = Number.NaN;    // End time for the event pool
+  var colW = cw;               // Column width for event visualization
+  var rowH = rh;               // Row height for event visualization
+  var width = Number.NaN;      // Overall width of the event pool
+  var groups = {};             // Stores event types grouped by their group ID
+  var sel = null;              // Selection for primary event handling
+  var sec = null;              // Secondary selection for additional event handling
+  var helpH = null;            // Helper for horizontal highlighting
+  var helpV = null;            // Helper for vertical highlighting
+  var hBars = [];              // Array for storing horizontal bars in the visualization
+  var vBars = [];              // Array for storing vertical bars in the visualization
+  var vSpan = [];              // Array for storing vertical spans in the visualization
 
+  /**
+   * Returns the 'busy' status of the TypePool.
+   */
   this.getBusy = function() {
     return busy;
   };
 
+  /**
+   * Gets the current mouse position relative to the selected element.
+   */
   this.getMousePos = function() {
     return d3.mouse(sel.node());
   };
 
-  var eventMap = {};
+  var eventMap = {};  // Map of registered named events
+  
+  /**
+   * Registers an event with a unique ID. Logs a warning if the ID is already in use.
+   */
   this.registerNamedEvent = function(id, eve) {
     if(id in eventMap) {
-      console.warn("duplicate event id: "+id);
+      console.warn("duplicate event id: " + id);
     }
     eventMap[id] = eve;
   };
+
+  /**
+   * Retrieves a registered event by its ID. Logs a warning if the ID is unknown.
+   */
   this.getNamedEvent = function(id) {
     if(!(id in eventMap)) {
-      console.warn("unknown event id: "+id);
+      console.warn("unknown event id: " + id);
     }
     return eventMap[id] || null;
   };
-  var eventGroups = {};
-  var egSel = null;
+
+  var eventGroups = {};  // Map of registered event groups
+  var egSel = null;      // Selection for event group visualization
+
+  /**
+   * Registers an event into a group by its group ID.
+   */
   this.registerEventGroup = function(eg_id, eve) {
     if(!(eg_id in eventGroups)) {
       eventGroups[eg_id] = [];
     }
     eventGroups[eg_id].push(eve);
   };
+
+  /**
+   * Retrieves all events belonging to a specific event group.
+   */
   this.getEventGroup = function(eg_id) {
     return eg_id in eventGroups ? eventGroups[eg_id] : [];
   };
+
+  /**
+   * Updates the visualization lines connecting events within the same group.
+   */
   this.updateEventGroupLines = function(eve) {
     overview.clearShadow();
 
@@ -83,8 +110,12 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     overview.onBoxUpdate();
   };
 
+  /**
+   * Adds an event to a specific type within a group, creating the type if it doesn't exist.
+   */
   this.addEventToType = function(eve, e, dictionary) {
     var g = e["group"];
+    console.log("Adding event to type:", g);
     if(!(g in groups)) {
       groups[g] = {};
     }
@@ -93,6 +124,9 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     var res;
     if(!(id in grp)) {
 
+      /**
+       * Recursive function to get an alias type for an event.
+       */
       function getAliasType(id) {
         if(!(id in dictionary[g])) {
           return null;
@@ -117,12 +151,13 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
 
       res = getAliasType(id);
       if(!res) {
-        console.warn("unknown type: "+g+" "+id);
+        console.warn("unknown type: " + g + " " + id);
         res = new Type(that, g, id, dictionary);
       }
 
       grp[id] = res;
-      // create all subtypes as well
+      
+      // Create all subtypes as well
       var t = res;
       while(t.getParentString() && !that.hasTypeFor(g, t.getParentString())) {
         var p = t.getParentString();
@@ -138,9 +173,17 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     res.addEvent(eve, e);
     return res;
   };
+
+  /**
+   * Checks if a specific type exists within a group.
+   */
   this.hasTypeFor = function(group, id) {
     return group in groups && id in groups[group];
   };
+
+  /**
+   * Retrieves a specific type within a group by its ID.
+   */
   this.getTypeFor = function(group, id) {
     if(!(group in groups)) {
       console.warn("unknown group", group);
@@ -153,17 +196,29 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     }
     return g[id];
   };
+
+  /**
+   * Traverses all groups and applies a callback function to each.
+   */
   this.traverseGroups = function(cb) {
     Object.keys(groups).forEach(function(gid) {
       cb(gid, groups[gid]);
     });
   };
+
+  /**
+   * Traverses a specific group and applies a callback function to each type within the group.
+   */
   this.traverseGroup = function(gid, cb) {
     var group = groups[gid];
     Object.keys(group).forEach(function(tid) {
       cb(group[tid]);
     });
   };
+
+  /**
+   * Traverses all types and applies a callback function to each, with optional sorting.
+   */
   this.traverseTypes = function(cb, sorting) {
     var types = [];
     this.traverseGroups(function(_, group) {
@@ -181,6 +236,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       cb(type.getGroupId(), type.getTypeId(), type);
     });
   };
+
+  /**
+   * Traverses all days and applies a callback function to each day's events.
+   */
   this.traverseDays = function(cb) {
     var types = [];
     that.traverseTypes(function(_, _, type) {
@@ -227,6 +286,12 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       }
     }
   };
+
+  /**
+   * Traverses
+
+ all events and applies a callback function to each.
+   */
   this.traverseEvents = function(cb) {
     this.traverseTypes(function(gid, tid, type) {
       type.traverseEvents(function(e) {
@@ -234,13 +299,21 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       });
     });
   };
-  this.traverseAllEvents = function(cb) { // even invisible ones
+
+  /**
+   * Traverses all events, including invisible ones, and applies a callback function to each.
+   */
+  this.traverseAllEvents = function(cb) {
     this.traverseTypes(function(gid, tid, type) {
       type.traverseAllEvents(function(e) {
         cb(gid, tid, e);
       });
     });
   };
+
+  /**
+   * Traverses events within a specific range of X-coordinates (pixels) and applies a callback to each.
+   */
   this.traverseEventsForX = function(x, cb) {
     var toX = x;
     var fromX = toX - colW;
@@ -253,16 +326,19 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       });
     });
   };
+
+  /**
+   * Traverses events within a specific range of time and applies a callback to each.
+   */
   this.traverseEventsForTime = function(time, cb) {
     var toTime = time;
     var fromTime = toTime - minTimeDiff;
     this.traverseEventsForTimespan(fromTime, toTime, cb);
   };
-  this.traverseEventsForEventTime = function(e, cb) {
-    var fromTime = e.getTime();
-    var toTime = fromTime + minTimeDiff;
-    this.traverseEventsForTimespan(fromTime, toTime, cb);
-  };
+
+  /**
+   * Traverses events within a specific timespan and applies a callback to each.
+   */
   this.traverseEventsForTimespan = function(fromTime, toTime, cb) {
     this.traverseTypes(function(gid, tid, type) {
       if(!type.isValid()) return;
@@ -273,6 +349,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       });
     });
   };
+
+  /**
+   * Converts event data to a bit vector representation.
+   */
   this.toBitVector = function(type) {
     var len = Math.ceil((endTime - startTime) / minTimeDiff);
     var vec = new Uint8Array(len);
@@ -282,9 +362,13 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     return vec;
   };
 
-  var topTenWeights = [];
-  var distinctTypes = 0;
-  var minTimeDiff = Number.POSITIVE_INFINITY;
+  var topTenWeights = [];       // Top ten event weights
+  var distinctTypes = 0;        // Number of distinct event types
+  var minTimeDiff = Number.POSITIVE_INFINITY;  // Minimum time difference between events
+
+  /**
+   * Clears all events and resets the state.
+   */
   this.clearEvents = function() {
     topTenWeights = [];
     startTime = 0;
@@ -311,9 +395,12 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     width = colW;
     that.updateLook();
   };
+
+  /**
+   * Reads events from a person object and updates the visualization.
+   */
   this.readEvents = function(person, dictionary) {
     if(!("start" in person) || !("end" in person)) {
-      // TODO compute time boundaries if missing
       console.warn("missing time bounds 'start' or 'end'", person["start"], person["end"]);
       return;
     }
@@ -325,9 +412,9 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     person["events"].forEach(function(e) {
       var eve = new Event(e, that, dictionary);
       var time = eve.getTime();
-      allTimes = jkjs.util.join(allTimes, [ time ]);
+      allTimes = jkjs.util.join(allTimes, [time]);
       if(time < startTime || time > endTime) {
-        console.warn("time is out of bounds: "+startTime+" < "+time+" < "+endTime);
+        console.warn("time is out of bounds: " + startTime + " < " + time + " < " + endTime);
         console.log(eve);
       }
       if(eve.isWeighted()) {
@@ -355,7 +442,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       distinctTypes += 1;
     });
     if(!Number.isFinite(minTimeDiff)) {
-      // slow way of getting minTimeDiff -- collecting all times
+      // Slow way of getting minTimeDiff -- collecting all times
       var allEventTimes = [];
       that.traverseAllEvents(function(_, _, e) {
         allEventTimes.push(e.getTime());
@@ -380,27 +467,47 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       "display": TypePool.hasWeightedEvent ? null : "none"
     });
   };
+
+  /**
+   * Checks if an event's weight is within the top ten weights.
+   */
   this.isInTopTenWeight = function(weight) {
     if(!topTenWeights.length) return true;
     return weight >= topTenWeights[0];
   };
+
+  /**
+   * Returns the total number of distinct event types.
+   */
   this.getTotalDistinctTypeCount = function() {
     return distinctTypes;
   };
 
+  /**
+   * Placeholder function for unimplemented features.
+   */
   function noImpl() {
     console.warn("no implementation possible");
     console.trace();
   }
 
+  /**
+   * Returns the width of the TypePool.
+   */
   function getWidth() {
     return width;
   }
-  var allW = width;
+
+  var allW = width;  // Overall width including any padding or margins
+
+  /**
+   * Returns the full width of the visualization.
+   */
   function getAllWidth() {
     return allW;
   }
 
+  // Define different modes for assigning Y-coordinates to events
   function yByEvent(name, time, sort) {
     return {
       "assignY": function(displayTypes, setY) {
@@ -418,12 +525,14 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     };
   }
 
+  // Define different modes for grouping events by category or time
   function yByGroup(name, time, join, init, sort) {
     return {
       "assignY": function(displayTypes, setY) {
         var groups = {};
         var roots = {};
 
+        // Helper function to get or create a node for event hierarchy
         function getNode(type) {
           var group = type.getGroup();
           var id = type.getTypeId();
@@ -436,6 +545,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
           return groups[group][id];
         }
 
+        // Create node and manage event hierarchy for the group
         function createNode(type) {
           var group = type.getGroup();
           var node = getNode(type);
@@ -469,10 +579,13 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
           }
         }
 
+        // Define a Node structure to represent event hierarchy
         function Node(id, type) {
           var that = this;
           var children = {};
-          var time = init;
+          var time = init
+
+;
 
           this.putChild = function(node) {
             var id = node.getId();
@@ -560,20 +673,32 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       return Math.max(a, b);
     }, Number.NEGATIVE_INFINITY, d3.ascending)
   ];
+
   var yModeIx = 0;
   var yMode = yModes[0];
+
+  /**
+   * Sets or gets the Y-axis mode for the visualization.
+   */
   this.yMode = function(_) {
     if(!arguments.length) return yModeIx;
     yModeIx = _;
     yMode = yModes[yModeIx];
     that.onValidityChange();
   };
+
+  /**
+   * Returns a list of available Y-axis modes by name.
+   */
   this.getYModes = function() {
     return yModes.map(function(ym) {
       return ym["name"];
     });
   };
 
+  /**
+   * Assigns Y-coordinates to types based on the selected Y-mode.
+   */
   function assignY(displayTypes) {
     var yMap = {};
 
@@ -597,13 +722,13 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       var pt = type;
       for(;;) {
         var pid = pt.getTypeId();
-        var grp = pt.getGroup()
+        var grp = pt.getGroup();
         if(pid in yMap[grp]) {
           type.setY(yMap[grp][pid]);
           break;
         }
         if(pt === pt.proxyType()) {
-          console.warn("no mapping for "+pid, pid, grp, type.getTypeId(), type.getGroup(), yMap);
+          console.warn("no mapping for " + pid, pid, grp, type.getTypeId(), type.getGroup(), yMap);
           type.setY(-rowH);
           break;
         }
@@ -677,65 +802,132 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       "vconst": false
     },
   ];
+
   var xModeIx = 0;
   var xMode = xModes[0];
+
+  /**
+   * Sets or gets the X-axis mode for the visualization.
+   */
   this.xMode = function(_) {
     if(!arguments.length) return xModeIx;
     xModeIx = _;
     xMode = xModes[xModeIx];
     that.onValidityChange();
   };
+
+  /**
+   * Returns a list of available X-axis modes by name.
+   */
   this.getXModes = function() {
     return xModes.map(function(xm) {
       return xm["name"];
     });
   };
 
+  /**
+   * Gets the X-coordinate by a specific time value.
+   */
   this.getXByTime = function(time) {
-      return xMode["byTime"](time);
+    return xMode["byTime"](time);
   };
-  
+
+  /**
+   * Gets the X-coordinate by an event's time value.
+   */
   this.getXByEventTime = function(e) {
     return xMode["byEvent"](e);
   };
+
+  /**
+   * Gets the time value from a specific X-coordinate.
+   */
   this.getTimeByX = function(x) {
     return xMode["time"](x);
   };
+
+  /**
+   * Gets the date object from a specific X-coordinate.
+   */
   this.getDateByX = function(x) {
     return xMode["date"](x);
   };
+
+  /**
+   * Returns whether the ticks should be displayed on the X-axis.
+   */
   this.showTicks = function() {
     return xMode["ticks"];
   };
+
+  /**
+   * Returns whether the X-axis is linear in time.
+   */
   this.linearTime = function() {
     return xMode["linear"];
   };
+
+  /**
+   * Returns whether the vertical spacing is constant.
+   */
   this.vConst = function() {
     return xMode["vconst"];
   };
+
+  /**
+   * Gets the Y-range for a specific type.
+   */
   this.getRangeY = function(type) {
     var y = type.getY();
     return [ y, y + rowH ];
   };
+
+  /**
+   * Gets the X-range for the entire event pool.
+   */
   this.getRangeX = function() {
     return [ that.getXByTime(startTime), that.getXByTime(endTime) ];
   };
+
+  /**
+   * Gets the time range for the entire event pool.
+   */
   this.getRangeTime = function() {
     return [ startTime, endTime ];
   };
+
+  /**
+   * Gets the date range for the entire event pool.
+   */
   this.getRangeDate = function() {
     return [ new Date(startTime * 1000), new Date(endTime * 1000) ];
   };
+
   var hasLinechart = false;
+
+  /**
+   * Sets or gets whether a line chart is present in the visualization.
+   */
   this.hasLinechart = function(_) {
     if(!arguments.length) return hasLinechart;
     hasLinechart = _;
-  }
-  var selListeners = [];
+  };
+
+  var selListeners = [];  // Listeners for selection changes
+
+  /**
+   * Adds a listener for selection changes.
+   */
   this.addSelectionsListener = function(listener) {
     selListeners.push(listener);
-    listener(sel, sec);
+   
+
+ listener(sel, sec);
   };
+
+  /**
+   * Sets the primary and secondary selections for events.
+   */
   this.setSelections = function(inner, secondary) {
     sel = inner;
     sel.datum(that);
@@ -758,15 +950,26 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       l(sel, sec);
     });
   };
+
+  /**
+   * Returns the primary selection object.
+   */
   this.select = function() {
     sel || console.warn("no selection defined", sel, that);
     return sel;
   };
+
+  /**
+   * Returns the secondary selection object.
+   */
   this.selectSec = function() {
     sec || console.warn("no secondary selection defined", sec, that);
     return sec;
   };
 
+  /**
+   * Adds a horizontal bar to the visualization based on the group and type IDs.
+   */
   this.addHBar = function(groupId, typeId, noUpdate) {
     that.traverseTypes(function(gid, tid, type) {
       if(gid != groupId) return;
@@ -777,6 +980,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       that.updateLook();
     }
   };
+
+  /**
+   * Adds a vertical span to the visualization based on the start and end times.
+   */
   this.addVSpan = function(from, to, styleClass, noUpdate) {
     var start = from;
     var end = Number.isNaN(to) ? from + minTimeDiff : to;
@@ -793,7 +1000,11 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     if(!noUpdate) {
       that.updateLook();
     }
-  }
+  };
+
+  /**
+   * Adds a vertical bar to the visualization at a specific time.
+   */
   this.addVBar = function(time, noUpdate) {
     var newBar = sel.append("rect").attr({
       "width": colW,
@@ -812,6 +1023,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       that.updateLook();
     }
   };
+
+  /**
+   * Traverses vertical bars and applies a callback function to each.
+   */
   this.traverseVBars = function(cb) {
     var from = startTime;
     var prevObj = null;
@@ -824,20 +1039,34 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       cb(from, endTime, prevObj);
     }
   };
+
   var inTransition = false;
+
+  /**
+   * Sets or gets the 'in transition' status of the visualization.
+   */
   this.inTransition = function(_) {
     if(!arguments.length) return inTransition;
     inTransition = _;
   };
-  var vGrids = [];
-  var newVGrids = [];
+
+  var vGrids = [];    // Current vertical grid lines
+  var newVGrids = []; // New vertical grid lines to be added
+
+  /**
+   * Sets new vertical grid lines to be displayed.
+   */
   this.setVGrids = function(vg) {
     newVGrids = vg;
   };
 
-  var hGrids = [];
-  var newHGrids = [];
-  var gridSize = 100;
+  var hGrids = [];    // Current horizontal grid lines
+  var newHGrids = []; // New horizontal grid lines to be added
+  var gridSize = 100; // Grid size for visualization
+
+  /**
+   * Updates the grid lines in the visualization.
+   */
   function updateGrid(_ /*svgport*/, viewport, scale, smooth) {
     var vrect = {
       x: 0,
@@ -857,6 +1086,9 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       return;
     }
 
+    /**
+     * Adjusts the grid lines based on the current viewport and scale.
+     */
     function adjust(arr, arrAfter, create, style) {
       if(arrAfter.length < arr.length) {
         for(var ix = arrAfter.length;ix < arr.length;ix += 1) {
@@ -919,6 +1151,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   }
 
   var maxConnectSlot = 0;
+
+  /**
+   * Sets or gets the maximum connection slot for events.
+   */
   this.maxConnectSlot = function(_) {
     if(!arguments.length) return maxConnectSlot;
     if(maxConnectSlot === _) return;
@@ -928,10 +1164,18 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   };
 
   var showSpans = true;
+
+  /**
+   * Sets or gets whether spans should be shown in the visualization.
+   */
   this.showSpans = function(_) {
     if(!arguments.length) return showSpans;
     showSpans = _;
   };
+
+  /**
+   * Updates the look of the entire visualization, adjusting all event elements and grid lines.
+   */
   this.updateLook = function() {
     var displayTypes = {};
     that.traverseTypes(function(gid, tid, type) {
@@ -951,9 +1195,14 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     var add = 100;
     var maxY = assignY(displayTypes);
     var maxX = 0;
+    
     // Traverse through each event and update the appearance
     that.traverseEvents(function(gid, tid, e) {
-      e.updateLook();
+      if(e.shown()) {
+        e.updateLook();
+      } else {
+        e.select().style("display", "none");
+      }
       var eSel = e.select();
       var oldX = e.lastX();
       var newX = that.getXByEventTime(e);
@@ -964,13 +1213,17 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
         eSel.attr({
           "x": newX - add,
           "y": -add,
-          "width": colW + 2 * add,  // Adjust the width scaling here
+          "width": colW
+
+ + 2 * add,  // Adjust the width scaling here
           "height": rowH + 2 * add  // Adjust the height scaling here
         });
         e.lastX(newX);
       }
       e.updateAdditional(newX + colW * 0.5, rowH * 0.5);
     });
+
+    // Adjust the appearance of event connections and bars
     displayTypes.forEach(function(type) {
       var prev = null;
       var prevT = Number.NaN;
@@ -1004,6 +1257,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
         prev.width(1);
       }
     });
+    
     var w = Math.max(maxX, colW) + 2 * add;
     var h = Math.max(maxY, rowH + 2 * add);
 
@@ -1065,11 +1319,19 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       });
     });
   };
+
+  /**
+   * Returns the current box size for the visualization.
+   */
   this.boxSize = function() {
     return [ colW, rowH ];
   };
 
-  var styleClasses = {};
+  var styleClasses = {};  // Map of style classes for events
+
+  /**
+   * Adds a new style class or updates an existing one.
+   */
   this.addStyleClass = function(names, styles) {
     names.split(" ").forEach(function(name) {
       var n = name.trim();
@@ -1081,6 +1343,10 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       styleClasses[n] = obj;
     });
   };
+
+  /**
+   * Retrieves the style properties for a given class, applying defaults where necessary.
+   */
   this.getStyleClass = function(names, defaults) {
     var res = {};
     Object.keys(defaults).forEach(function(k) {
@@ -1098,29 +1364,52 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     return res;
   };
 
-  var szListeners = [];
+  var szListeners = [];  // List of listeners for size updates
+
+  /**
+   * Calls all registered size update listeners with the current width and height.
+   */
   this.onSizeUpdate = function(w, h) {
     szListeners.forEach(function(l) {
       l(w, h);
     });
   };
+
+  /**
+   * Adds a new listener for size updates.
+   */
   this.addSizeListener = function(listen) {
     szListeners.push(listen);
   };
 
-  var vpListeners = [];
+  var vpListeners = [];  // List of listeners for viewport changes
+
+  /**
+   * Calls all registered viewport change listeners with the current viewport and scale.
+   */
   this.onViewportChange = function(svgport, viewport, scale, smooth) {
     vpListeners.forEach(function(l) {
       l(svgport, viewport, scale, smooth);
     });
   };
+
+  /**
+   * Adds a new listener for viewport changes.
+   */
   this.addViewportChangeListener = function(listen) {
-    vpListeners.unshift(listen); // earlier added listeners are always called last!
+    vpListeners.unshift(listen); // Earlier added listeners are always called last!
   };
+
+  /**
+   * Adds a default listener for viewport changes to update the grid.
+   */
   this.addViewportChangeListener(function(svgport, viewport, scale, smooth) {
     updateGrid(svgport, viewport, scale, smooth);
   });
 
+  /**
+   * Returns the color associated with a specific group ID.
+   */
   this.getGroupColor = function(gid) {
     const typeGroup = that.getTypeFor(gid, "");
     
@@ -1133,14 +1422,17 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
   };
 
   var inBulkSelection = 0;
-  
+
+  /**
+   * Handles bulk selection of events within a rectangular area.
+   */
   TypePool.prototype.selectInRect = function(sRect, done) {
     if (!done) return; // Don't update if selection isn't finalized yet
 
     // Hide the vertical helper line
     if (this.helpV) {
       this.helpV.style("opacity", 0);
-      }
+    }
 
     this.startBulkSelection(); // Begin a series of selection changes
 
@@ -1150,6 +1442,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
             e.setSelected(false);
         });
     }
+
     // Iterate over all types
     this.traverseTypes(function(gid, tid, type) {
         if (!type.isValid()) return; // Skip invalid types
@@ -1162,7 +1455,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
             type.traverseEventRange(
                 sRect.x - colW,
                 sRect.x + sRect.width,
-                function(e) { // Function to get x-coordinate (in pixels) of an event
+                function(e) { // Function to get the x-coordinate (in pixels) of an event
                     return this.getXByEventTime(e);
                 }.bind(this),  // Bind to ensure correct 'this' context
                 function(e) {  // Callback for events within the box
@@ -1171,6 +1464,7 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
             );
         }
     }.bind(this));  // Bind to ensure correct 'this' context
+    
     // updateSelectedTimeRangeDisplay(startTime, endTime);
 
     this.highlightMode(TypePool.HIGHLIGHT_NONE); // Clear any previous highlights
@@ -1178,34 +1472,63 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     this.fixSelection(true);    // Fix the current selection
     this.greyOutRest(true);     // Grey out events not in the selection
     this.endBulkSelection();   // End the bulk selection process, triggering updates
-};
+  };
+
+  /**
+   * Begins a bulk selection process, allowing multiple selections to be handled together.
+   */
   this.startBulkSelection = function() {
     inBulkSelection += 1;
   };
+
+  /**
+   * Ends the bulk selection process, triggering updates if necessary.
+   */
   this.endBulkSelection = function() {
     inBulkSelection -= 1;
     if(inBulkSelection <= 0) {
       that.updateSelection();
     }
   };
+
   var greyOutRest = false;
-  this.greyOutRest = function(_) {
+
+  /**
+   * Sets or gets the 'grey out rest' status, which affects the visibility of non-selected events.
+   */
+ 
+
+ this.greyOutRest = function(_) {
     if(!arguments.length) return greyOutRest;
     greyOutRest = _;
   };
+
   var fixSelection = false;
+
+  /**
+   * Sets or gets the 'fix selection' status, which prevents selection changes once fixed.
+   */
   this.fixSelection = function(_) {
     if(!arguments.length) return fixSelection;
     fixSelection = _;
   };
+
   var highlightEvent = null;
-  var highlightListeners = [];
-  var highlightMode = TypePool.HIGHLIGHT_HOR;
+  var highlightListeners = [];  // List of listeners for highlight changes
+  var highlightMode = TypePool.HIGHLIGHT_HOR;  // Current highlight mode
   var hm = highlightMode;
+
+  /**
+   * Sets or gets the highlight mode for events (horizontal, vertical, or both).
+   */
   this.highlightMode = function(_) {
     if(!arguments.length) return highlightMode;
     highlightMode = _;
   };
+
+  /**
+   * Sets or gets the currently highlighted event.
+   */
   this.highlightEvent = function(_) {
     if(!arguments.length) return highlightEvent;
     if(highlightEvent === _ && highlightMode === hm) return;
@@ -1238,13 +1561,26 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       cb();
     });
   };
+
+  /**
+   * Adds a new listener for highlight changes.
+   */
   this.addHighlightListener = function(cb) {
     highlightListeners.push(cb);
   };
+
   var hasSelection = false;
+
+  /**
+   * Returns whether there is a current selection.
+   */
   this.hasSelection = function() {
     return hasSelection;
   };
+
+  /**
+   * Updates the current selection, notifying listeners as necessary.
+   */
   this.updateSelection = function() {
     if(inBulkSelection > 0) return;
     overview.clearShadow();
@@ -1292,57 +1628,80 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
       singleType = true;
     }
     hasSelection = !!events.length;
-    // ===== notify listeners =====
+
+    // Notify listeners of the new selection
     seListeners.forEach(function(l) {
       l(events, types, singleSlot, singleType);
     });
     overview.onBoxUpdate();
   };
+
   var joinSelections = false;
+
+  /**
+   * Sets or gets the 'join selections' status, which controls whether new selections are added to the current selection.
+   */
   this.joinSelections = function(js) {
     if(!arguments.length) return joinSelections;
     joinSelections = !!js;
   };
+
   var verticalSelection = false;
+
+  /**
+   * Sets or gets the 'vertical selection' status, which controls whether selection is restricted vertically.
+   */
   this.verticalSelection = function(_) {
     if(!arguments.length) return verticalSelection;
     verticalSelection = !!_;
   };
-  var seListeners = [];
+
+  var seListeners = [];  // List of listeners for selection events
+
+  /**
+   * Adds a new listener for selection events.
+   */
   this.addSelectionListener = function(listen) {
     seListeners.push(listen);
   };
 
   var inValidityChange = false;
   var inBulkValidity = 0;
+
+  /**
+   * Begins a bulk validity change, allowing multiple validity updates to be processed together.
+   */
   this.startBulkValidity = function() {
     inBulkValidity += 1;
   };
+
+  /**
+   * Ends the bulk validity change process, triggering updates if necessary.
+   */
   this.endBulkValidity = function() {
     inBulkValidity -= 1;
     if(inBulkValidity <= 0) {
       that.onValidityChange();
     }
   };
-  this.onValidityChange = function() {
-    if(inValidityChange) return;
-    inValidityChange = true;
-    busy.setState(jkjs.busy.state.busy);
+
+  /**
+   * Updates the validity of all elements in the TypePool, refreshing the display as necessary.
+   */
+  TypePool.prototype.onValidityChange = function() {
+    if(this.inValidityChange) return;
+    this.inValidityChange = true;
+    var that = this;
     setTimeout(function() {
-      var error = true;
-      try {
-        overview.clearShadow();
-        that.updateLook();
-        that.updateSelection();
-        onVC();
-        error = false;
-      } finally {
-        inValidityChange = false;
-        busy.setState(error ? jkjs.busy.state.warn : jkjs.busy.state.norm, error ? "Error during validity change." : "");
-      }
+      that.updateLook();
+      that.updateSelection();
+      that.inValidityChange = false;
     }, 0);
   };
 
+  /**
+   * Toggles the display of only weighted events in the visualization.
+   */
   this.showOnlyWeightedEvents = function(s) {
     overview.clearShadow();
     that.traverseAllEvents(function(_, _, e) {
@@ -1356,16 +1715,20 @@ function TypePool(busy, overview, setBox, onVC, cw, rh) {
     that.updateSelection();
   };
 } // TypePool
+
+// Static properties for TypePool
 TypePool.hasWeightedEvent = false;
 TypePool.HIGHLIGHT_NONE = 0;
 TypePool.HIGHLIGHT_HOR = 1;
 TypePool.HIGHLIGHT_VER = 2;
 TypePool.HIGHLIGHT_BOTH = TypePool.HIGHLIGHT_HOR | TypePool.HIGHLIGHT_VER;
 
+/**
+ * Sets the time range for the TypePool, updating the visualization accordingly.
+ */
 TypePool.prototype.setTimeRange = function(start, end) {
   this.startTime = start;
   this.endTime = end;
   console.log("Time range set to:", this.startTime, this.endTime);
-  // You might want to trigger some updates here
-  this.updateLook();
+  this.updateLook();  // Trigger an update to the visualization
 };

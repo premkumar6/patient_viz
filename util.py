@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# -*- mode: python; -*-
-"""exec" "`dirname \"$0\"`/call.sh" "$0" "$@"; """
 from __future__ import print_function
 from __future__ import division
 
@@ -13,12 +10,6 @@ from operator import itemgetter
 import json
 
 from sqlalchemy import Unicode
-
-__doc__ = """
-Created on 2015-04-10
-
-@author: joschi
-"""
 
 _compute_self = "total_seconds" not in dir(timedelta(seconds=1))
 _tz = pytz.timezone('US/Eastern')

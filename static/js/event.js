@@ -61,11 +61,10 @@ function Event(e, pool, dictionary) {
   // Visibility status of the event
   var shown = true;
   this.shown = function(_) {
-    if(!arguments.length) return shown;
-    shown = _;
-    if(!shown) {
-      that.deleteEvent();
-      destroyed = false;
+    if(!arguments.length) return this._shown;
+    this._shown = _;
+    if(this.select()) {
+      this.select().style("display", this._shown ? null : "none");
     }
   };
    // Checks if the current event is equivalent to another event based on time, weight, and description
@@ -207,10 +206,11 @@ function Event(e, pool, dictionary) {
   };
    // Method to update the visual appearance of the event
   this.updateLook = function() {
-    if(destroyed) {
-      console.warn("event already destroyed");
+    if(this.destroyed || !this._shown) {
+      if(this.select()) this.select().style("display", "none");
       return false;
     }
+    if(this.select()) this.select().style("display", null);
     that.select().attr({
       "fill": that.getColor(),
       "stroke": that.isSelected() ? "gray" : "gray",

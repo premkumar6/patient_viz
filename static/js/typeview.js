@@ -146,7 +146,8 @@ function TypeView(pool, sel, sortDropdownSel) {
     console.log("Groups:", groups);
 
     // Get the keys of the groups and handle empty or invalid states
-    var groupKeys = Object.keys(groups);
+    // var groupKeys = Object.keys(groups);
+    var groupKeys = Object.keys(dictionary);
     if (groupKeys.length === 0) {
       console.warn("No groups available");
       sel.selectAll("div.pType").remove();  // Clear the sidebar if no groups
