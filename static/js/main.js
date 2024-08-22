@@ -1,5 +1,10 @@
 // Filtering data based on event-types and encrypted the data
 
+<<<<<<< HEAD
+=======
+const pageSize = 5000;
+let currentPatientId = null;
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
 let isLoading = false;
 var SLOW_MODE = false; // Flag to control slow mode behavior
 var DEBUG_V_SEGMENTS = false; // Flag to control debug view segments
@@ -215,11 +220,17 @@ async function start() {
   histogram = views[4];
   labels = views[5];
 
+<<<<<<< HEAD
   // Load the initial dictionary data
   await fetchDictionary();
 
   // Set event listeners for various controls
   d3.select("#pVSel").on("change", function () {
+=======
+  setupLoadMoreButton();
+
+  d3.select("#pVSel").on("change", function() {
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
     pool.verticalSelection(d3.select("#pVSel").node().checked);
   });
   d3.select("#pShow").on("change", function () {
@@ -255,6 +266,7 @@ async function start() {
   var dictionary = null;
   var lastDictionaryFile = null;
 
+<<<<<<< HEAD
   // Function to load patient data dynamically based on ID and group
   async function loadFile(pid, dictionaryFile, createState, group = null) {
     document.getElementById('timelineContainer').style.display = 'none';
@@ -464,6 +476,118 @@ async function start() {
       console.error("Error during type change:", error);
     }
   });
+=======
+// Dynamic Patient ID Creation
+function loadFile(pid, dictionaryFile, createState, page = 1) {
+  if (createState) {
+      var url = jkjs.util.getOwnURL() + "?p=" + encodeURIComponent(pid) + "&d=" + encodeURIComponent(dictionaryFile);
+      window.history.pushState({
+          pid: pid,
+          dictionary: dictionaryFile
+      }, "", url);
+  }
+  console.log("Loading patient file from:", pid);
+  busy.setState(jkjs.busy.state.busy);
+  if (page === 1) {
+    overview.clearShadow();
+    typeList.clearLists();
+    eventList.setEvents([], false, false);
+    pool.clearEvents();
+    currentPatientId = pid;
+    hasMoreEvents = true;
+  } else {
+    // Clear previous events before loading new ones
+    eventList.setEvents([], false, false);
+    pool.clearEvents();
+  }
+
+  // Extract person_id if it's a filename
+  var personId = pid;
+  if (pid.startsWith('json/') && pid.endsWith('.json')) {
+      personId = pid.substring(5, pid.length - 5);
+  }
+
+    // Use the new endpoint to get patient data
+    d3.json(`/get_patient_data?id=${encodeURIComponent(personId)}&page=${page}&page_size=${pageSize}`, function(err, json_patient) {
+      if (err) {
+          console.error("Failed loading patient:", pid, err);
+          busy.setState(jkjs.busy.state.warn, "Failed loading file: '" + pid + "'. Error: " + err.statusText);
+          return;
+      }
+      console.log("Received patient data:", json_patient);
+      if (json_patient.start === undefined || json_patient.end === undefined) {
+          console.error("Missing start or end time in patient data");
+          busy.setState(jkjs.busy.state.warn, "Missing start or end time in patient data");
+          return;
+      }
+
+      d3.json(dictionaryFile, function(err_dict, json_dictionary) {
+          if (err_dict) {
+              console.error("Failed loading dictionary:", dictionaryFile, err_dict);
+              busy.setState(jkjs.busy.state.warn, "Invalid dictionary file. Error: " + err_dict.statusText);
+              return;
+          }
+          dictionary = json_dictionary;
+          lastDictionaryFile = dictionaryFile;
+          var error = true;
+          try {
+              loadPerson(pid, json_patient, pool, eventList, typeList, linechart, histogram, dictionary, suppl);
+
+              currentPage = json_patient.pagination.page;
+              hasMoreEvents = currentPage < json_patient.pagination.total_pages;
+
+              busy.setState(jkjs.busy.state.norm);
+              relayout();
+              if (page==1){
+              zui.showAll(false);
+              }
+              error = false;
+
+              var loadingIndicator = document.getElementById('loadingIndicator');
+              if (loadingIndicator) loadingIndicator.style.display = 'none';
+              
+              isLoading = false;
+          } 
+          finally {
+              if (error) {
+                  busy.setState(jkjs.busy.state.warn, "Error while loading file.");
+              }
+          }
+      });
+  });
+}
+
+function setupLoadMoreButton() {
+  var loadMoreButton = document.getElementById('loadMoreButton');
+  if (loadMoreButton) {
+      loadMoreButton.addEventListener('click', function() {
+          if (!isLoading && hasMoreEvents) {
+              loadMoreEvents();
+          }
+      });
+  }
+}
+
+  function loadMoreEvents() {
+  if (isLoading || !hasMoreEvents) return;
+  
+  isLoading = true;
+  currentPage++;
+  
+  // Show loading indicator
+  var loadingIndicator = document.getElementById('loadingIndicator');
+  if (loadingIndicator) loadingIndicator.style.display = 'block';
+
+  // Hide the Load More button while loading
+  // var loadMoreButton = document.getElementById('loadMoreButton');
+  // if (loadMoreButton) loadMoreButton.style.display = 'none';
+
+  // Call loadFile function to fetch more data
+  loadFile(currentPatientId, lastDictionaryFile, false, currentPage);
+  }
+
+
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
   // Handle browser back/forward navigation
   window.onpopstate = function (e) {
     if (e.state) {
@@ -543,4 +667,20 @@ async function start() {
       alert("Please enter a valid Patient ID.");
     }
   });
+<<<<<<< HEAD
 }
+=======
+}
+
+
+
+
+
+
+  
+
+
+
+
+
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3

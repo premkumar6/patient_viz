@@ -26,12 +26,20 @@
   <script src="{{ url_for('static', filename='js/typepool.js') }}"></script>
   <script src="{{ url_for('static', filename='js/typeview.js') }}"></script>
   <script src="{{ url_for('static', filename='js/shared.js') }}" charset="utf-8"></script>
+<<<<<<< HEAD
   <script src="{{ url_for('static', filename='js/labels.js') }}"></script>
   <script src="{{ url_for('static', filename='js/cluster.js') }}"></script>
   <script src="{{ url_for('static', filename='js/histogram.js') }}"></script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   <!-- add this if you want to disable to dev tool -->
   <!-- <script disable-devtool-auto src='https://cdn.jsdelivr.net/npm/disable-devtool'></script> --> 
+=======
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/labels.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/cluster.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/histogram.js') }}"></script>
+  <!-- <script disable-devtool-auto src='https://cdn.jsdelivr.net/npm/disable-devtool'></script> -->
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
 
   <style>
     body {
@@ -221,6 +229,7 @@
     <h1>Welcome to Patient Viz</h1>
     <p>Please use the navigation below to explore the patient's data.</p>
     <button onclick="showContent()" class="custom-button">Get Started</button>
+<<<<<<< HEAD
   </div>
   <header id="pHead" class="navbar navbar-default navbar-static-top container">
     <div class="container">
@@ -228,6 +237,15 @@
       <button id="selectFileBtn" class="custom-button">Extract Patient File</button>
       <!-- <button id="loadMoreButton" style="margin-left: 20px; padding: 5px 10px;">Load More</button> -->
     </div>
+=======
+</div>
+<header id="pHead" class="navbar navbar-default navbar-static-top container">
+  <div class="container">
+        <input type="text" id="patientIdInput" class="custom-input" placeholder="Enter Patient ID" />
+        <button id="selectFileBtn" class="custom-button">Extract Patient File</button>
+        <button id="loadMoreButton" style="margin-left: 20px; padding: 5px 10px;">Load More</button>
+      </div>
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
     </div>
     <ul class="list-inline" id="pHeadList">
       <li>
@@ -289,15 +307,23 @@
     <div id="filteredEvents"></div>
   </div>
 
+<<<<<<< HEAD
   <div class="footer">
     <p>Designed and developed by the TDS Data Science team</p>
   </div>
   <!-- uncomment if you want to disable the dev tool -->
   <!-- <script>
+=======
+<div class="footer">
+  <p>Designed and developed by the TDS Data Science team</p>
+</div>
+<!-- <script>
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
   disableDevtool({
   url: 'www.google.com'
         });
 </script> -->
+<<<<<<< HEAD
 
   <script>
     function showContent() {
@@ -311,8 +337,22 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('timelineContainer').style.display = 'none';
+=======
+<script>
+  function showContent() {
+    document.querySelector('.opening-page').style.display = 'none';
+    document.querySelectorAll('.container').forEach(container => {
+      container.style.display = 'block';
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
     });
   </script>
 </body>
 
+<<<<<<< HEAD
 </html>
+=======
+
+
+  
+
+>>>>>>> 35ef72a74a97dbc3c1826de4c7102110a9d5cca3
